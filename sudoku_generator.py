@@ -7,6 +7,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from sklearn.datasets import fetch_openml
 
+BLACK = (0, 0, 0, 255)
+WHITE = (255, 255, 255, 255)
+WHITE_NO_ALPHA = (255, 255, 255, 0)
+
 
 class MNIST:
     def __init__(self):
@@ -19,7 +23,12 @@ class MNIST:
         self.indices_by_number = [np.flatnonzero(self.y == str(i)) for i in range(0, 10)]
         del X, Y
 
-    def get_random(self, digit: int) -> np.array:
+    def get_random(self, digit: int) -> np.ndarray:
+        """
+        Get a random sample of the given digit.
+
+        :returns: 2D numpy array of 28x28 pixels
+        """
         return self.x[np.random.choice(self.indices_by_number[digit])]
 
 
@@ -53,19 +62,20 @@ class Sudoku:
     def __getitem__(self, item):
         return self.data[item]
 
-    def solve(self, m):
-        if isinstance(m, list):
-            m = np.array(m)
-        elif isinstance(m, str):
-            m = np.loadtxt(m, dtype=np.int, delimiter=",")
-        rg = np.arange(m.shape[0] + 1)
+    @staticmethod
+    def solve(sudoku):
+        if isinstance(sudoku, list):
+            sudoku = np.array(sudoku)
+        elif isinstance(sudoku, str):
+            sudoku = np.loadtxt(sudoku, dtype=np.int, delimiter=",")
+        rg = np.arange(sudoku.shape[0] + 1)
         while True:
-            mt = m.copy()
+            mt = sudoku.copy()
             while True:
                 d = []
                 d_len = []
-                for i in range(m.shape[0]):
-                    for j in range(m.shape[1]):
+                for i in range(sudoku.shape[0]):
+                    for j in range(sudoku.shape[1]):
                         if mt[i, j] == 0:
                             possibles = np.setdiff1d(rg, np.union1d(np.union1d(mt[i, :], mt[:, j]),
                                                                     mt[3 * (i // 3):3 * (i // 3 + 1),
@@ -170,7 +180,8 @@ class SudokuGenerator:
                     break
         out_q.put((indices, larr))
 
-    def get_sudoku_grid(self, cell_size=28, major_line_width=2, minor_line_width=1):
+    @staticmethod
+    def get_sudoku_grid(cell_size=28, major_line_width=2, minor_line_width=1):
         grid_size = cell_size * 9 + 4 * major_line_width + 6 * minor_line_width
 
         data = np.ndarray((grid_size, grid_size, 4), dtype=np.uint8)
@@ -199,7 +210,7 @@ class SudokuGenerator:
         grid_data, coords = self.get_sudoku_grid()
 
         grid_image = Image.fromarray(grid_data, 'RGBA')
-        txt_image = Image.new('RGBA', grid_image.size, (255, 255, 255, 0))
+        txt_image = Image.new('RGBA', grid_image.size, WHITE_NO_ALPHA)
         txt_draw = ImageDraw.Draw(txt_image)
 
         x_offset = 4
@@ -211,7 +222,7 @@ class SudokuGenerator:
                 if digit == 0:
                     continue
                 elif not mask[i][j]:
-                    txt_draw.text((x_offset + x_coord, y_offset + y_coord), str(digit), font=self.font, fill=(0, 0, 0, 255))
+                    txt_draw.text((x_offset + x_coord, y_offset + y_coord), str(digit), font=self.font, fill=BLACK)
         out = Image.alpha_composite(grid_image, txt_image)
         return out
 
@@ -230,9 +241,9 @@ class SudokuGenerator:
 
         # Image setup
         grid_image = Image.fromarray(grid_data, 'RGBA')
-        background_image = Image.new('RGBA', grid_image.size, (255, 255, 255, 255))
+        background_image = Image.new('RGBA', grid_image.size, WHITE)
         mnist_image = Image.fromarray(mnist_data, 'RGBA')
-        txt_image = Image.new('RGBA', grid_image.size, (255, 255, 255, 0))
+        txt_image = Image.new('RGBA', grid_image.size, WHITE_NO_ALPHA)
         txt_draw = ImageDraw.Draw(txt_image)
 
         # Drawing
@@ -245,7 +256,7 @@ class SudokuGenerator:
                 if digit == 0:
                     continue
                 if mask[i][j]:
-                    txt_draw.text((y_offset + y_coord, x_offset + x_coord), str(digit), font=self.font, fill=(0, 0, 0, 255))
+                    txt_draw.text((y_offset + y_coord, x_offset + x_coord), str(digit), font=self.font, fill=BLACK)
                 elif mnist_mask[i][j]:
                     mnist_digit = np.array(mnist.get_random(digit), dtype=np.int).repeat(4).reshape((28, 28, 4))
                     mnist_digit = mnist_digit * -1 + 255
