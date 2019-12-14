@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import os
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -34,26 +34,33 @@ class MNIST:
 
 class Sudoku:
     # TODO: cite sources
-    def __init__(self):
-        while True:
-            n = 9
-            self.data = np.zeros((n, n), dtype=np.int)
-            rg = np.arange(1, n + 1)
-            self.data[0, :] = np.random.choice(rg, n, replace=False)
-            try:
-                for r in range(1, n):
-                    for c in range(n):
-                        col_rest = np.setdiff1d(rg, self.data[:r, c])
-                        row_rest = np.setdiff1d(rg, self.data[r, :c])
-                        avb1 = np.intersect1d(col_rest, row_rest)
-                        sub_r, sub_c = r // 3, c // 3
-                        avb2 = np.setdiff1d(np.arange(0, n + 1),
-                                            self.data[sub_r * 3:(sub_r + 1) * 3, sub_c * 3:(sub_c + 1) * 3].ravel())
-                        avb = np.intersect1d(avb1, avb2)
-                        self.data[r, c] = np.random.choice(avb, size=1)
-                break
-            except ValueError:
-                pass
+    def __init__(self, data=None):
+        if data is not None:
+            self.data = data
+        else:
+            while True:
+                n = 9
+                self.data = np.zeros((n, n), dtype=np.int)
+                rg = np.arange(1, n + 1)
+                self.data[0, :] = np.random.choice(rg, n, replace=False)
+                try:
+                    for r in range(1, n):
+                        for c in range(n):
+                            col_rest = np.setdiff1d(rg, self.data[:r, c])
+                            row_rest = np.setdiff1d(rg, self.data[r, :c])
+                            avb1 = np.intersect1d(col_rest, row_rest)
+                            sub_r, sub_c = r // 3, c // 3
+                            avb2 = np.setdiff1d(np.arange(0, n + 1),
+                                                self.data[sub_r * 3:(sub_r + 1) * 3, sub_c * 3:(sub_c + 1) * 3].ravel())
+                            avb = np.intersect1d(avb1, avb2)
+                            self.data[r, c] = np.random.choice(avb, size=1)
+                    break
+                except ValueError:
+                    pass
+
+    @staticmethod
+    def from_array(data: np.ndarray):
+        return Sudoku(data=data)
 
     @property
     def shape(self):
@@ -128,7 +135,7 @@ class SudokuGenerator:
     def __init__(self, n: int, font_path: Union[Path, str] = 'fonts/FreeMono.ttf',
                  workers=1):
         self.font = ImageFont.truetype(font_path, 32)
-        self.generated = np.zeros((n, 9, 9), dtype=np.int)
+        self.generated: List[Sudoku] = []
         self.n = n
         self.workers = min(workers, n)
         self._generate()
@@ -161,8 +168,8 @@ class SudokuGenerator:
 
         print(f"Started {len(procs)} workers")
         for _ in range(len(procs)):
-            indices, larr = out_q.get()
-            self.generated[indices] = larr
+            larr = out_q.get()
+            self.generated.extend(larr)
 
         for p in procs:
             p.join()
@@ -170,15 +177,15 @@ class SudokuGenerator:
 
     @staticmethod
     def get_sudokus(indices, out_q):
-        larr = np.zeros((indices.shape[0], 9, 9), dtype=np.int)
+        larr: List[Sudoku] = []
         for i, seed in enumerate(indices):
             np.random.seed(seed)
             while True:
                 sudoku = Sudoku()
                 if sudoku.is_valid:  # Ensure generated sudoku is valid, otherwise run again
-                    larr[i] = sudoku.data
+                    larr.append(sudoku)
                     break
-        out_q.put((indices, larr))
+        out_q.put(larr)
 
     @staticmethod
     def get_sudoku_grid(cell_size=28, major_line_width=2, minor_line_width=1):
@@ -203,7 +210,7 @@ class SudokuGenerator:
         return data, coords
 
     def draw_sudoku_pil(self, idx: int, masking_rate=0.7):
-        sudoku = self.generated[idx]
+        sudoku = self.generated[idx].data
 
         mask = np.random.choice([True, False], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
 
@@ -270,16 +277,79 @@ class SudokuGenerator:
         return out
 
 
+class Transform:
+    def apply(self, sudoku: Sudoku) -> List[Sudoku]:
+        pass
+
+
+class Rotation(Transform):
+    def apply(self, sudoku: Sudoku) -> List[Sudoku]:
+        ret: List[Sudoku] = [sudoku]
+        for i in range(3):
+            sudoku_from_array = Sudoku.from_array(np.rot90(ret[i].data))
+            if sudoku_from_array.is_valid:
+                ret.append(sudoku_from_array)
+        return ret
+
+
+class Flip(Transform):
+    def apply(self, sudoku: Sudoku) -> List[Sudoku]:
+        ret: List[Sudoku] = [sudoku]
+
+        for ax in [0, 1, None]:
+            sudoku_from_array = Sudoku.from_array(np.flip(sudoku.data, ax))
+            if sudoku_from_array.is_valid:
+                ret.append(sudoku_from_array)
+        return ret
+
+
+class TransformSudokuGenerator(SudokuGenerator):
+    def __init__(self, n: int, **kwargs):
+        super().__init__(n, **kwargs)
+        self.transforms: List[Transform] = []
+
+    def add_transform(self, transform: Transform):
+        self.transforms.append(transform)
+
+    def build(self):
+        for transform in self.transforms:
+            newl: List[Sudoku] = []
+            for s in self.generated:
+                newl.extend(transform.apply(s))
+            self.generated = newl
+
+
 def save_img(img: Image, name: str):
     with open(name, 'wb') as fout:
         img.save(fout)
 
 
-if __name__ == '__main__':
-    mnist = MNIST()
+def temp_row_transform():
     sgen = SudokuGenerator(1, workers=8)
-    for i in range(1):
-        print(sgen.generated[i])
+    print(sgen.generated[0].data.copy())
+    save_img(sgen.draw_sudoku_pil(0, masking_rate=0.0), f"sudoku_0.0_switchM([0,1,2],[0,1,2]).png")
+    sudoku = Sudoku.from_array(sgen.generated[0].data.copy())
+    sudoku.data[:, [3, 4, 5, 0, 1, 2, 6, 7, 8]] = sgen.generated[0].data[:, [0, 1, 2, 3, 4, 5, 6, 7, 8]]
+    sgen.generated.append(sudoku)
+    save_img(sgen.draw_sudoku_pil(1, masking_rate=0.0), f"sudoku_0.0_switchM([0,1,2],[1,0,2]).png")
+    print(sudoku.data)
+    print(f"Is valid: {sudoku.is_valid:b}")
+    sudoku = Sudoku.from_array(sgen.generated[0].data.copy())
+    sudoku.data[[3, 4, 5, 0, 1, 2, 6, 7, 8]] = sgen.generated[1].data[[0, 1, 2, 3, 4, 5, 6, 7, 8]]
+    sgen.generated.append(sudoku)
+    save_img(sgen.draw_sudoku_pil(2, masking_rate=0.0), f"sudoku_0.0_switchM([1,0,2],[0,1,2]).png")
+    print(sudoku.data)
+    print(f"Is valid: {sudoku.is_valid:b}")
+
+
+if __name__ == '__main__':
+    # mnist = MNIST()
+    sgen = TransformSudokuGenerator(1, workers=8)
+    sgen.add_transform(Rotation())
+    sgen.build()
+    print(sgen.generated[2].data)
+
+    # temp_row_transform()
     # sgen.draw_sudoku_pil(0)
-    for p in [0., .2, .4, .6, .8, 1.0]:
-        save_img(sgen.draw_sudoku_pil_mnist(0, mnist=mnist, mnist_rate=p), f"sudoku_0.7_{p}.png")
+    # for p in [0., .2, .4, .6, .8, 1.0]:
+    #     save_img(sgen.draw_sudoku_pil_mnist(0, mnist=mnist, mnist_rate=p), f"sudoku_0.7_{p}.png")
