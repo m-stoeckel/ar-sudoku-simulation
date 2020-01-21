@@ -1,6 +1,6 @@
 from PIL import Image
 
-from transform import TransformSudokuGenerator, MajorSwitch
+from sudoku_transform import TransformSudokuGenerator, MajorSwitch
 
 
 def save_img(img: Image, name: str):

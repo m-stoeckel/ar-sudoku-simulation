@@ -1,13 +1,16 @@
 import os
 import zipfile
+from typing import List, Union
 
 import PIL
-import imageio
 import keras
 import matplotlib.pyplot as plt
 import numpy as np
+import typing
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import trange
+
+from image_transforms import ImageTransform, RandomPerspectiveTransform
 
 DEBUG = False
 DIGIT_COUNT = 915
@@ -16,7 +19,7 @@ DIGIT_RESOLUTION = 128
 
 class DigitDataset:
 
-    def __init__(self, digits_path="digits/"):
+    def __init__(self, digits_path="digits/", resolution=128):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
@@ -28,10 +31,14 @@ class DigitDataset:
         else:
             self.digit_path = digits_path
 
-        self.digits = np.empty((9 * DIGIT_COUNT, DIGIT_RESOLUTION, DIGIT_RESOLUTION), dtype=np.uint8)
+        self.digits = np.empty((9 * DIGIT_COUNT, resolution, resolution), dtype=np.uint8)
         for i in trange(9 * DIGIT_COUNT, desc="Loading images"):
             digit_path = f"digits/{i}.png"
-            self.digits[i] = imageio.imread(digit_path)
+            img = Image.open(digit_path)
+            if resolution != DIGIT_RESOLUTION:
+                self.digits[i] = np.array(img.resize((resolution, resolution)))
+            else:
+                self.digits[i] = np.array(img)
 
         if DEBUG:
             numbers = np.hstack(
@@ -62,6 +69,7 @@ class DigitDataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.on_epoch_end()
+        self.transforms: List[List[ImageTransform]] = list()
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -80,7 +88,7 @@ class DigitDataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         'Updates indexes after each epoch'
         self.indices = np.arange(len(self.dataset))
-        if self.shuffle == True:
+        if self.shuffle:
             np.random.shuffle(self.indices)
 
     def __data_generation(self, indices):
@@ -93,10 +101,7 @@ class DigitDataGenerator(keras.utils.Sequence):
         for i, index in enumerate(indices):
             # Store sample
             digit: np.ndarray = self.dataset[index]
-            pos = np.random.randint(0, 33, 8)
-            transform = [(pos[0], pos[1]), (128 - pos[2], pos[3]), (128 - pos[4], 128 - pos[5]), (pos[6], 128 - pos[7])]
-            # transform = [(32, 0), (128, 0), (128 - 16, 128), (0, 112)]
-            digit = self.perspective_transform(digit, transform)
+            # TODO: apply transformations
             X[i] = digit
 
             # Store class
@@ -104,41 +109,22 @@ class DigitDataGenerator(keras.utils.Sequence):
 
         return X, keras.utils.to_categorical(y, num_classes=9)
 
-    @staticmethod
-    def perspective_transform(arr: np.ndarray, transform):
-        x_dim, y_dim = arr.shape
-        coeffs = DigitDataGenerator.find_coeffs(transform, x_dim, y_dim)
-        arr = np.array(
-            Image.fromarray(arr, mode="L").transform(
-                (x_dim, y_dim),
-                Image.PERSPECTIVE, coeffs,
-                Image.BICUBIC
-            )
-        )
-        return arr
-
-    @staticmethod
-    def find_coeffs(pa, x_dim=128, y_dim=128):
+    def add_transforms(self, transforms: Union[ImageTransform, List[ImageTransform]]):
         """
-        Maps the image with its corner points at pa back to their origin and thus making a perspective transform.
-        Point order: TL, TR, BR, BL
-        Changing the origin
-        https://stackoverflow.com/a/14178717
+        Add a transform or a list of sequential transforms to this generator.
+
+        :param transforms: Single ImageTransform or list of sequential ImageTransform
+        :return: None
         """
-        pb = [(0, 0), (x_dim, 0), (x_dim, y_dim), (0, y_dim)]
-        matrix = []
-        for p1, p2 in zip(pa, pb):
-            matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0] * p1[0], -p2[0] * p1[1]])
-            matrix.append([0, 0, 0, p1[0], p1[1], 1, -p2[1] * p1[0], -p2[1] * p1[1]])
-
-        A = np.matrix(matrix, dtype=np.float)
-        B = np.array(pb).reshape(8)
-
-        res = np.dot(np.linalg.inv(A.T * A) * A.T, B)
-        return np.array(res).reshape(8)
+        if type(transforms) is ImageTransform:
+            transforms = [transforms]
+        elif type(transforms) is not list:
+            transforms = list(transforms)
+        self.transforms.append(transforms)
 
 
 def generate_composition():
+    transform = RandomPerspectiveTransform()
     images = [[] for _ in range(9)]
     for i in range(0, 9):
         img = Image.open(f"digits/{i * 917}.png")
@@ -147,14 +133,11 @@ def generate_composition():
         d.rectangle([(16, 16), (112, 112)], outline="white")
         del d
         for _ in range(4):
-            offsets = np.random.randint(0, 33, 8) * np.array([1, 1, -1, 1, -1, -1, 1, -1])
-            transform = [(offsets[0], offsets[1]), (128 + offsets[2], offsets[3]), (128 + offsets[4], 128 + offsets[5]),
-                         (offsets[6], 128 + offsets[7])]
-            digit = DigitDataGenerator.perspective_transform(np.array(img), transform)
-            images[i].append(digit)
+            digit: Image.Image = transform.apply(img)
+            images[i].append(np.array(digit))
     imgs = np.hstack([np.vstack(digits) for digits in images])
-    print(imgs.shape)
-    ImageOps.invert(Image.fromarray(imgs)).save("composition.png")
+    imgs = ImageOps.invert(Image.fromarray(imgs))
+    imgs.save("composition.png")
     plt.imshow(imgs, cmap="gray")
     plt.axis('off')
     plt.show()
@@ -170,21 +153,17 @@ def test_generator():
     # plt.show()
 
 
-# test_generator()
-# generate_composition()
-
 def transform_sudoku():
-    img: Image.Image = Image.open(f"../sudoku_0.7_0.4.png")
-    img = img.convert("L")
-    x_dim, y_dim = img.size
-    offsets = np.random.randint(0, 33, 8) * np.array([1, 1, -1, 1, -1, -1, 1, -1])
-    transform = [(offsets[0], offsets[1]), (x_dim + offsets[2], offsets[3]), (x_dim + offsets[4], y_dim + offsets[5]),
-                 (offsets[6], y_dim + offsets[7])]
-    transformed = DigitDataGenerator.perspective_transform(np.array(img), transform)
-    Image.fromarray(transformed).save("transformed.png")
+    transform = RandomPerspectiveTransform()
+    img: Image.Image = Image.open(f"sudoku.jpeg")
+    transformed = transform.apply(img, return_mode="RGBA")
+    background = Image.new(transformed.mode, transformed.size, "white")
+    Image.alpha_composite(background, transformed).save("transformed.png")
     plt.imshow(transformed, cmap="gray")
     plt.axis('off')
     plt.show()
 
 
+# test_generator()
+generate_composition()
 transform_sudoku()
