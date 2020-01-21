@@ -1,7 +1,9 @@
 from typing import Union
 
+import cv2
 import numpy as np
 from PIL import Image
+from matplotlib import pyplot as plt
 
 
 class ImageTransform:
@@ -82,39 +84,32 @@ class RandomPerspectiveTransformBackwards(RandomPerspectiveTransform):
         return np.array(res).reshape(8)
 
 
-class CameraTransformTwoD(ImageTransform):
-    def __init__(self, f=None, c=None, angles=None, translations=None):
-        self.f = [500, 500] if f is None else f
-        self.c = [400, 300] if c is None else c
+class LensDistortion(ImageTransform):
+    def __init__(self, focal_lengths=None, dist_coeffs=None, principal_point=None):
+        self.dist_coeffs = np.array([0, 0, 0, 0]) if dist_coeffs is None else dist_coeffs
 
-        self.angles = [np.radians(0), np.radians(0), np.radians(0)] if angles is None else angles
-        self.translations = [0, 0, 0] if translations is None else translations
-
-    def compute_Rt(self):
-        X_rot = np.array([
-            [1, 0, 0],
-            [0, np.cos(self.angles[0]), -np.sin(self.angles[0])],
-            [0, np.sin(self.angles[0]), np.cos(self.angles[0])]
-        ])
-        Y_rot = np.array([
-            [np.cos(self.angles[1]), 0, np.sin(self.angles[1])],
-            [0, 1, 0],
-            [-np.sin(self.angles[1]), 0, np.cos(self.angles[1])]
-        ])
-        ret = np.zeros((3, 3))
-        ret = np.eye(3)
-        ret = np.dot(X_rot, ret)
-        ret = np.dot(Y_rot, ret)
-        ret[:, 2] = np.array(self.translations).reshape(3, 1)
-
-        return ret
+        self.f = [500, 500] if focal_lengths is None else focal_lengths
+        self.c = principal_point
 
     def apply(self, img: Union[np.ndarray, Image.Image]):
-        if type(img) is Image.Image:
+        if type(img) is not np.ndarray:
             img: np.ndarray = np.array(img)
-        arr = img.reshape(-1, 2)
-        arr = np.hstack(arr, np.ones(arr.shape[0]))
-        Rt = self.compute_Rt()
-        M = np.array([[self.f[0], 0, self.c[0]], [0, self.f[1], self.c[1]], [0, 0, 1]])
-        arr = np.dot(M, np.dot(Rt, arr))
-        return (arr / arr[-1])[:, :1].reshape(img.shape)
+        c = self.c if self.c is not None else np.floor(np.array(img.shape) / 2)
+        camera_matrix = np.array([[self.f[0], 0, c[0]], [0, self.f[1], c[1]], [0, 0, 1]])
+        img = cv2.undistort(img, camera_matrix, self.dist_coeffs)
+        return Image.fromarray(img)
+
+
+def test_camera():
+    img = Image.open("sudoku.jpeg").convert('L')
+    transform = LensDistortion(dist_coeffs=np.array([0, 0.5, 0, 0, 0]))
+    img = transform.apply(img)
+
+    plt.imshow(img)
+    plt.imshow(img, cmap="gray")
+    plt.axis('off')
+    plt.show()
+
+
+if __name__ == '__main__':
+    test_camera()
