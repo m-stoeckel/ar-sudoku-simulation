@@ -1,6 +1,6 @@
 from PIL import Image
 
-from sudoku_transform import TransformSudokuGenerator, MajorSwitch
+from sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
 
 
 def save_img(img: Image, name: str):
@@ -9,10 +9,10 @@ def save_img(img: Image, name: str):
 
 
 def temp_row_transform():
-    sgen = TransformSudokuGenerator(1, workers=8)
-    sgen.transforms.append(MajorSwitch(row_switch=(1, 0, 2)))
-    sgen.transforms.append(MajorSwitch(column_switch=(1, 0, 2)))
-    sgen.transforms.append(MajorSwitch(row_switch=(1, 0, 2), column_switch=(1, 0, 2)))
+    sgen = PermutationSudokuGenerator(1, workers=8)
+    sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2)))
+    sgen.permutations.append(MajorSwitch(column_switch=(1, 0, 2)))
+    sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2), column_switch=(1, 0, 2)))
     sgen.build()
     print(sgen.generated[0].data)
     save_img(sgen.draw_sudoku_pil(0, masking_rate=0.0), f"sudoku_0.0_switchM([0,1,2],[0,1,2]).png")

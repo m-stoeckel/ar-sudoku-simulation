@@ -5,12 +5,12 @@ import numpy as np
 from sudoku_generator import Sudoku, SudokuGenerator
 
 
-class Transform:
+class SudokuPermutation:
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
         pass
 
 
-class Rotation(Transform):
+class Rotation(SudokuPermutation):
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
         ret: List[Sudoku] = []
         for i in range(3):
@@ -20,7 +20,7 @@ class Rotation(Transform):
         return ret
 
 
-class Flip(Transform):
+class Flip(SudokuPermutation):
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
         ret: List[Sudoku] = []
 
@@ -31,7 +31,7 @@ class Flip(Transform):
             return ret
 
 
-class MajorSwitch(Transform):
+class MajorSwitch(SudokuPermutation):
     def __init__(self, column_switch=(0, 1, 2), row_switch=(0, 1, 2), column_first=False):
         lookup = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
         if not set(column_switch) == set(row_switch) == {0, 1, 2}:
@@ -56,17 +56,17 @@ class MajorSwitch(Transform):
         return [sudoku_from_array]
 
 
-class TransformSudokuGenerator(SudokuGenerator):
+class PermutationSudokuGenerator(SudokuGenerator):
     def __init__(self, n: int, **kwargs):
         super().__init__(n, **kwargs)
-        self.transforms: List[Transform] = []
+        self.permutations: List[SudokuPermutation] = []
 
-    def add_transform(self, transform: Transform):
-        self.transforms.append(transform)
+    def add_permutation(self, permutation: SudokuPermutation):
+        self.permutations.append(permutation)
 
     def build(self):
-        for transform in self.transforms:
+        for permutation in self.permutations:
             newl: List[Sudoku] = []
             for s in self.generated:
-                newl.extend(transform.apply(s))
+                newl.extend(permutation.apply(s))
             self.generated.extend(newl)
