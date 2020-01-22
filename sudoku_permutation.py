@@ -12,7 +12,7 @@ class SudokuPermutation:
 
 class Rotation(SudokuPermutation):
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
-        ret: List[Sudoku] = []
+        ret: List[Sudoku] = [sudoku]
         for i in range(3):
             sudoku_from_array = Sudoku.from_array(np.rot90(ret[i].data))
             if sudoku_from_array.is_valid:

@@ -1,11 +1,12 @@
+import cv2
 from PIL import Image
 
-from sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
+from sudoku_generator import MNIST
+from sudoku_permutation import PermutationSudokuGenerator, MajorSwitch, Rotation
 
 
 def save_img(img: Image, name: str):
-    with open(name, 'wb') as fout:
-        img.save(fout)
+    cv2.imwrite(name, img)
 
 
 def temp_row_transform():
@@ -31,13 +32,14 @@ def temp_row_transform():
 
 
 if __name__ == '__main__':
-    # mnist = MNIST()
-    # sgen = TransformSudokuGenerator(1, workers=8)
-    # sgen.add_transform(Rotation())
-    # sgen.build()
-    # print(sgen.generated[2].data)
+    # temp_row_transform()
 
-    temp_row_transform()
-    # sgen.draw_sudoku_pil(0)
-    # for p in [0., .2, .4, .6, .8, 1.0]:
-    #     save_img(sgen.draw_sudoku_pil_mnist(0, mnist=mnist, mnist_rate=p), f"sudoku_0.7_{p}.png")
+    mnist = MNIST()
+    sgen = PermutationSudokuGenerator(1, workers=8)
+    sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2)))
+    sgen.permutations.append(MajorSwitch(column_switch=(1, 0, 2)))
+    sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2), column_switch=(1, 0, 2)))
+    sgen.build()
+    print(sgen.generated[2].data)
+    for p in [0., .2, .4, .6, .8, 1.0]:
+        save_img(sgen.draw_sudoku_pil_mnist(0, mnist=mnist, mnist_rate=p), f"sudoku_0.7_{p}.png")

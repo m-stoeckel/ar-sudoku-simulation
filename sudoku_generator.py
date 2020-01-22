@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 from typing import Union, List
 
+import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
 from sklearn.datasets import fetch_openml
 
 BLACK = (0, 0, 0, 255)
@@ -134,7 +134,6 @@ class Sudoku:
 class SudokuGenerator:
     def __init__(self, n: int, font_path: Union[Path, str] = 'fonts/FreeMono.ttf',
                  workers=1):
-        self.font = ImageFont.truetype(font_path, 32)
         self.generated: List[Sudoku] = []
         self.n = n
         self.workers = min(workers, n)
@@ -214,14 +213,10 @@ class SudokuGenerator:
 
         mask = np.random.choice([True, False], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
 
-        grid_data, coords = self.get_sudoku_grid()
+        grid_image, coords = self.get_sudoku_grid()
 
-        grid_image = Image.fromarray(grid_data, 'RGBA')
-        txt_image = Image.new('RGBA', grid_image.size, WHITE_NO_ALPHA)
-        txt_draw = ImageDraw.Draw(txt_image)
-
-        x_offset = 4
-        y_offset = -2
+        x_offset = 5
+        y_offset = 4
         for i in range(9):
             for j in range(9):
                 digit = sudoku[i][j]
@@ -229,9 +224,11 @@ class SudokuGenerator:
                 if digit == 0:
                     continue
                 elif not mask[i][j]:
-                    txt_draw.text((x_offset + x_coord, y_offset + y_coord), str(digit), font=self.font, fill=BLACK)
-        out = Image.alpha_composite(grid_image, txt_image)
-        return out
+                    (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
+                    grid_image = cv2.putText(grid_image, str(digit),
+                                             (x_coord + x_offset, y_coord + text_height + y_offset),
+                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0, 255), 1, cv2.LINE_AA)
+        return grid_image
 
     def draw_sudoku_pil_mnist(self, idx: int, masking_rate=0.7, mnist: MNIST = None, mnist_rate=0.2):
         np.random.seed(idx)  # FIXME
@@ -243,18 +240,11 @@ class SudokuGenerator:
         mnist_mask = np.logical_xor(mnist_mask, mask)
 
         # Image data setup
-        grid_data, coords = self.get_sudoku_grid()
-        mnist_data = np.zeros(grid_data.shape, dtype=np.uint8)
-
-        # Image setup
-        grid_image = Image.fromarray(grid_data, 'RGBA')
-        background_image = Image.new('RGBA', grid_image.size, WHITE)
-        mnist_image = Image.fromarray(mnist_data, 'RGBA')
-        txt_image = Image.new('RGBA', grid_image.size, WHITE_NO_ALPHA)
-        txt_draw = ImageDraw.Draw(txt_image)
+        grid_image, coords = self.get_sudoku_grid()
+        mnist_image = np.zeros(grid_image.shape, dtype=np.uint8)
 
         # Drawing
-        x_offset = -2
+        x_offset = 5
         y_offset = 4
         for i in range(9):
             for j in range(9):
@@ -263,15 +253,15 @@ class SudokuGenerator:
                 if digit == 0:
                     continue
                 if mask[i][j]:
-                    txt_draw.text((y_offset + y_coord, x_offset + x_coord), str(digit), font=self.font, fill=BLACK)
+                    (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
+                    grid_image = cv2.putText(grid_image, str(digit),
+                                             (x_coord + x_offset, y_coord + text_height + y_offset),
+                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0, 255), 1, cv2.LINE_AA)
                 elif mnist_mask[i][j]:
                     mnist_digit = np.array(mnist.get_random(digit), dtype=np.int).repeat(4).reshape((28, 28, 4))
-                    mnist_digit = mnist_digit * -1 + 255
-                    mnist_digit[:, :, 3] = 255
-                    mnist_data[x_coord:x_coord + 28, y_coord:y_coord + 28] = mnist_digit
+                    mnist_digit[:, :, 3] = 0
+                    mnist_image[y_coord:y_coord + 28, x_coord:x_coord + 28] = mnist_digit
 
         # Image composition
-        out = Image.alpha_composite(background_image, grid_image)
-        out = Image.alpha_composite(out, txt_image)
-        out = Image.alpha_composite(out, mnist_image)
+        out = cv2.subtract(grid_image, mnist_image)
         return out

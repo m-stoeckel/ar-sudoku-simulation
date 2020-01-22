@@ -2,12 +2,10 @@ import os
 import zipfile
 from typing import List, Union
 
-import PIL
+import cv2
 import keras
 import matplotlib.pyplot as plt
 import numpy as np
-import typing
-from PIL import Image, ImageDraw, ImageOps
 from tqdm import trange
 
 from image_transforms import ImageTransform, RandomPerspectiveTransform
@@ -34,15 +32,16 @@ class DigitDataset:
         self.digits = np.empty((9 * DIGIT_COUNT, resolution, resolution), dtype=np.uint8)
         for i in trange(9 * DIGIT_COUNT, desc="Loading images"):
             digit_path = f"digits/{i}.png"
-            img = Image.open(digit_path)
+            img = cv2.imread(digit_path, cv2.IMREAD_GRAYSCALE)
             if resolution != DIGIT_RESOLUTION:
-                self.digits[i] = np.array(img.resize((resolution, resolution)))
+                self.digits[i] = cv2.resize(img, (resolution, resolution))
             else:
                 self.digits[i] = np.array(img)
 
         if DEBUG:
             numbers = np.hstack(
-                [np.vstack([self.digits[i] for i in range(o, DIGIT_COUNT * 9, 915)]) for o in range(9)])
+                [np.vstack([self.digits[i] for i in range(o, DIGIT_COUNT * 9, 915)]) for o in range(9)]
+            )
             plt.imshow(numbers, cmap="gray")
             plt.axis('off')
             plt.show()
@@ -127,16 +126,14 @@ def generate_composition():
     transform = RandomPerspectiveTransform()
     images = [[] for _ in range(9)]
     for i in range(0, 9):
-        img = Image.open(f"digits/{i * 917}.png")
-        images[i].append(np.array(img))
-        d = PIL.ImageDraw.Draw(img)
-        d.rectangle([(16, 16), (112, 112)], outline="white")
-        del d
+        img = cv2.imread(f"digits/{i * 917}.png", cv2.IMREAD_GRAYSCALE)
+        img = cv2.rectangle(img, (16, 16), (112, 112), (255, 255, 255), 2)
+        images[i].append(img)
         for _ in range(4):
-            digit: Image.Image = transform.apply(img)
-            images[i].append(np.array(digit))
+            digit = transform.apply(img)
+            images[i].append(digit)
     imgs = np.hstack([np.vstack(digits) for digits in images])
-    imgs = ImageOps.invert(Image.fromarray(imgs))
+    imgs = cv2.bitwise_not(imgs)
     imgs.save("composition.png")
     plt.imshow(imgs, cmap="gray")
     plt.axis('off')
@@ -155,10 +152,8 @@ def test_generator():
 
 def transform_sudoku():
     transform = RandomPerspectiveTransform()
-    img: Image.Image = Image.open(f"sudoku.jpeg")
-    transformed = transform.apply(img, return_mode="RGBA")
-    background = Image.new(transformed.mode, transformed.size, "white")
-    Image.alpha_composite(background, transformed).save("transformed.png")
+    img = cv2.imread(f"sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+    transformed = transform.apply(img)
     plt.imshow(transformed, cmap="gray")
     plt.axis('off')
     plt.show()
