@@ -3,9 +3,11 @@ import os
 from pathlib import Path
 from typing import Union, List
 
+from PIL import Image
 import cv2
 import numpy as np
 from sklearn.datasets import fetch_openml
+from matplotlib import pyplot as plt
 
 BLACK = (0, 0, 0, 255)
 WHITE = (255, 255, 255, 255)
@@ -17,11 +19,11 @@ class MNIST:
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
         os.makedirs('datasets/', exist_ok=True)
-        X, Y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
-        self.x = np.array(X).reshape((70000, 28, 28))
-        self.y = np.array(Y)
+        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
+        self.x = np.array(x).reshape((70000, 28, 28))
+        self.y = np.array(y)
         self.indices_by_number = [np.flatnonzero(self.y == str(i)) for i in range(0, 10)]
-        del X, Y
+        del x, y
 
     def get_random(self, digit: int) -> np.ndarray:
         """
@@ -227,7 +229,7 @@ class SudokuGenerator:
                     (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
                     grid_image = cv2.putText(grid_image, str(digit),
                                              (x_coord + x_offset, y_coord + text_height + y_offset),
-                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0, 255), 1, cv2.LINE_AA)
+                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 1, cv2.LINE_AA)
         return grid_image
 
     def draw_sudoku_pil_mnist(self, idx: int, masking_rate=0.7, mnist: MNIST = None, mnist_rate=0.2):
@@ -235,9 +237,9 @@ class SudokuGenerator:
         sudoku = self.generated[idx]
 
         # Mask setup
-        mask = np.random.choice([False, True], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
-        mnist_mask = np.random.choice([True, False], size=sudoku.shape, p=[mnist_rate, 1 - mnist_rate])
-        mnist_mask = np.logical_xor(mnist_mask, mask)
+        printed_digit_mask = np.random.choice([False, True], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
+        mnist_digit_mask = np.random.choice([True, False], size=sudoku.shape, p=[mnist_rate, 1 - mnist_rate])
+        mnist_digit_mask[printed_digit_mask] = False
 
         # Image data setup
         grid_image, coords = self.get_sudoku_grid()
@@ -252,16 +254,19 @@ class SudokuGenerator:
                 x_coord, y_coord = coords[i], coords[j]
                 if digit == 0:
                     continue
-                if mask[i][j]:
+                if printed_digit_mask[i][j]:
                     (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
                     grid_image = cv2.putText(grid_image, str(digit),
                                              (x_coord + x_offset, y_coord + text_height + y_offset),
-                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0, 255), 1, cv2.LINE_AA)
-                elif mnist_mask[i][j]:
-                    mnist_digit = np.array(mnist.get_random(digit), dtype=np.int).repeat(4).reshape((28, 28, 4))
+                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 1, cv2.LINE_AA)
+                elif mnist_digit_mask[i][j]:
+                    mnist_digit = np.array(mnist.get_random(digit), dtype=np.uint8).repeat(4).reshape((28, 28, 4))
+                    mnist_digit = cv2.bitwise_not(mnist_digit)
+                    mask = np.any(mnist_digit[:, :, :3] != 255, axis=2)
                     mnist_digit[:, :, 3] = 0
+                    mnist_digit[mask, 3] = 255
                     mnist_image[y_coord:y_coord + 28, x_coord:x_coord + 28] = mnist_digit
 
         # Image composition
-        out = cv2.subtract(grid_image, mnist_image)
-        return out
+        img = Image.alpha_composite(Image.fromarray(grid_image), Image.fromarray(mnist_image))
+        return np.array(img)
