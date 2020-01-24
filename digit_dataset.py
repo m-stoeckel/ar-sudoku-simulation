@@ -14,7 +14,7 @@ DIGIT_COUNT = 915
 
 
 class MNIST:
-    def __init__(self):
+    def __init__(self, shuffle=True):
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
         os.makedirs('datasets/', exist_ok=True)
@@ -22,7 +22,8 @@ class MNIST:
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
         shuf = np.arange(70000)
-        np.random.shuffle(shuf)
+        if shuffle:
+            np.random.shuffle(shuf)
         self.train_x = x[shuf[:60000]]
         self.train_y = y[shuf[:60000]]
         self.test_x = x[shuf[60000:]]
@@ -65,6 +66,10 @@ class FilteredMNIST(MNIST):
         self.test_y = self.test_y[filtered]
         self.train_indices_by_number = [np.flatnonzero(self.train_y == i) for i in range(1, 10)]
         self.test_indices_by_number = [np.flatnonzero(self.test_y == i) for i in range(1, 10)]
+
+        # Reduce all labels by one
+        self.train_y -= 1
+        self.test_y -= 1
 
     def get_random(self, digit: int) -> np.ndarray:
         """
@@ -189,10 +194,19 @@ class DigitDataGenerator(keras.utils.Sequence):
 
 class BalancedMnistDigitDataGenerator(DigitDataGenerator):
     def __init__(self, dataset: DigitDataset, mnist_data: Tuple[np.ndarray, np.ndarray], batch_size=32, shuffle=True,
-                 separate_mnist=True, **kwargs):
+                 separate_mnist=True, flatten=False, **kwargs):
         self.mnist_x = mnist_data[0]
         self.mnist_y = mnist_data[1]
         self.separate_mnist = separate_mnist
+        self.mnist_classes = len(np.unique(self.mnist_y))
+
+        # Number of classes is 9 if separate_mnist is False,
+        # 18 if separate_mnist is True and the MNIST dataset was zero-filtered
+        # and 19 otherwise. In any case, the MNIST classes are LAST in the label order.
+        self.num_classes = 9 + self.mnist_classes if self.separate_mnist else 9
+
+        self.flatten = flatten
+
         super().__init__(dataset, batch_size, shuffle, **kwargs)
 
     def __len__(self):
@@ -200,7 +214,11 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         return int(np.ceil(len(self.dataset) * 2 / self.batch_size))
 
     def __getitem__(self, index):
-        """Generate one batch of data"""
+        """
+        Generate one batch of data
+        :param index: The batch number.
+        :return: Returns a tuple of a 4-dimensional ndarray and the class-categorical label ndarray
+        """
         # Generate indexes of the batch
         mini_batch_size = int(self.batch_size / 2)
         digit_indices = self.indices[index * mini_batch_size:(index + 1) * mini_batch_size]
@@ -210,9 +228,19 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         xd, yd = self.__data_generation(digit_indices)
         xm, ym = self.__mnist_data_generation(mnist_indices)
 
+        # Stack data and convert images to float
         x = np.vstack((xd, xm)).astype(np.float32)
         y = np.vstack((yd, ym))
-        return x[:, :, :, np.newaxis], y
+
+        # Scale x to 0..1
+        x /= 255.
+
+        if self.flatten:
+            x = x.reshape(-1, 28**2)
+        else:
+            x = x[:, :, :, np.newaxis]
+
+        return x, y
 
     def on_epoch_end(self):
         super().on_epoch_end()
@@ -229,7 +257,7 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         X = self.dataset.digits[indices]
         y = self.dataset.labels[indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=18 if self.separate_mnist else 9)
+        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
     def __mnist_data_generation(self, indices, ):
         """
@@ -238,9 +266,9 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         :return: A tuple of a digit array and a class categorical array
         """
         X = self.mnist_x[indices]
-        y = self.mnist_y[indices] + (8 if self.separate_mnist else 0)
+        y = self.mnist_y[indices] + (self.mnist_classes if self.separate_mnist else 0)
 
-        return X, keras.utils.to_categorical(y, num_classes=18 if self.separate_mnist else 9)
+        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
 
 def generate_composition():
