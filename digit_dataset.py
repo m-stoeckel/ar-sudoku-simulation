@@ -3,14 +3,11 @@ import zipfile
 from pathlib import Path
 from typing import List, Union, Tuple
 
-import cv2
 import keras
-import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.datasets import fetch_openml
 from tqdm import trange
 
-from image_transforms import ImageTransform, RandomPerspectiveTransform
+from image_transforms import *
 
 DEBUG = False
 DIGIT_COUNT = 915
@@ -258,7 +255,8 @@ def generate_composition():
 def test_generator():
     dataset = DigitDataset(resolution=28)
     dataset.add_transforms(RandomPerspectiveTransform())
-    dataset.add_transforms(RandomPerspectiveTransform())
+    # dataset.add_transforms(RandomPerspectiveTransformX())
+    # dataset.add_transforms(RandomPerspectiveTransformY())
     dataset.apply_transforms(keep=False)
     mnist = FilteredMNIST()
     d = BalancedMnistDigitDataGenerator(dataset, (mnist.train_x, mnist.train_y),

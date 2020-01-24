@@ -5,15 +5,26 @@ from matplotlib import pyplot as plt
 
 class ImageTransform:
     def apply(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply the transformation to the input image.
+
+        :param img: The input image, as a numpy array.
+        :return: The transformed image.
+        """
         pass
 
 
 class RandomPerspectiveTransform(ImageTransform):
-    def __init__(self, max_shift=0.1, background_color=None):
+    """
+    Applies a homographic perspective transform to images.
+    The image is mapped from its original space to a narrowed space.
+    """
+    flags = cv2.INTER_LINEAR
+
+    def __init__(self, max_shift=0.25, background_color=None):
         self.max_shift = max_shift
         self.bg = background_color
         self.bg_mode = cv2.BORDER_REPLICATE if self.bg is None else cv2.BORDER_CONSTANT
-        self.flags = cv2.INTER_LINEAR
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         mat = self.get_transform_matrix(img)
@@ -23,24 +34,53 @@ class RandomPerspectiveTransform(ImageTransform):
 
     def get_transform_matrix(self, img):
         """
-        TODO
+        Compute the homographic matrix H.
         """
         x_dim, y_dim = img.shape[:2]
         x_dim, y_dim = x_dim - 1, y_dim - 1
-        x_pos = np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
-        y_pos = np.random.randint(0, np.floor(y_dim * self.max_shift) + 1, 4)
-        pa = np.array([[x_pos[0], y_pos[0]],
+        x_pos = self.get_x_displacement(x_dim)
+        y_pos = self.get_y_displacement(y_dim)
+        pa = np.array([[0, 0], [x_dim, 0], [x_dim, y_dim], [0, y_dim]], dtype=np.float32)
+        pb = np.array([[x_pos[0], y_pos[0]],
                        [x_dim - x_pos[1], y_pos[1]],
                        [x_dim - x_pos[2], y_dim - y_pos[2]],
                        [x_pos[3], y_dim - y_pos[3]]], dtype=np.float32)
-        pb = np.array([[0, 0], [x_dim, 0], [x_dim, y_dim], [0, y_dim]], dtype=np.float32)
         return cv2.getPerspectiveTransform(pa, pb)
+
+    def get_x_displacement(self, x_dim):
+        return np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
+
+    def get_y_displacement(self, x_dim):
+        return np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
 
 
 class RandomPerspectiveTransformBackwards(RandomPerspectiveTransform):
-    def __init__(self, max_shift=0.25, background_color=None):
-        super().__init__(max_shift, background_color)
-        self.flags = [cv2.INTER_LINEAR, cv2.WARP_INVERSE_MAP]
+    """
+    Applies a backwards homographic perspective transform to images.
+    In contrast to RandomPerspectiveTransform, the homography is computed the other way around, mapping from a given
+    space to the original image space.
+    """
+    flags = cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP
+
+
+class RandomPerspectiveTransformX(RandomPerspectiveTransform):
+    """
+    Applies a homographic perspective transform to images, only without modification along the Y axis of the image
+    (only left or right tilt).
+    """
+
+    def get_y_displacement(self, x_dim):
+        return np.zeros(4)
+
+
+class RandomPerspectiveTransformY(RandomPerspectiveTransform):
+    """
+    Applies a homographic perspective transform to images, only without modification along the X axis of the image
+    (only forward or backward tilt).
+    """
+
+    def get_x_displacement(self, x_dim):
+        return np.zeros(4)
 
 
 class LensDistortion(ImageTransform):
