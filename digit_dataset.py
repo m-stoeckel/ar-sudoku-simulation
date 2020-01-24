@@ -11,7 +11,6 @@ from image_transforms import *
 
 DEBUG = False
 DIGIT_COUNT = 915
-DIGIT_RESOLUTION = 128
 
 
 class MNIST:
@@ -42,10 +41,16 @@ class MNIST:
 
     @property
     def train(self):
+        """
+        Returns the random train split (60.000 samples) of the MNIST dataset.
+        """
         return (self.train_x, self.train_y)
 
     @property
     def test(self):
+        """
+        Returns the random test split (10.000 samples) of the MNIST dataset.
+        """
         return (self.test_x, self.test_y)
 
 
@@ -74,15 +79,15 @@ class FilteredMNIST(MNIST):
 
 class DigitDataset:
 
-    def __init__(self, digits_path="digits/", resolution=128):
+    def __init__(self, digits_path="datasets/digits/", resolution=28):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
         if digits_path.endswith(".zip"):
-            self.digit_path = Path("digits/")
-            if not os.path.exists("digits/") or len(os.listdir("digits")) < 9 * DIGIT_COUNT:
+            self.digit_path = Path("datasets/digits/")
+            if not os.path.exists("datasets/digits/") or len(os.listdir("digits")) < 9 * DIGIT_COUNT:
                 with zipfile.ZipFile(digits_path) as f_zip:
-                    f_zip.extractall()
+                    f_zip.extractall("datasets/")
         else:
             self.digit_path: Path = Path(digits_path)
 
@@ -98,10 +103,10 @@ class DigitDataset:
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
             if DEBUG:  # TODO: remove
                 img = cv2.bitwise_not(img)
-                img = cv2.rectangle(img, (0, 0), (DIGIT_RESOLUTION - 1, DIGIT_RESOLUTION - 1), color=(0, 0, 0),
+                img = cv2.rectangle(img, (0, 0), (self.res - 1, self.res - 1), color=(0, 0, 0),
                                     thickness=2)
-            if self.res != DIGIT_RESOLUTION:
-                interpolation = cv2.INTER_AREA if self.res < DIGIT_RESOLUTION else cv2.INTER_CUBIC
+            if self.res != img.shape[0]:
+                interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
                 self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
             else:
                 self.digits[i] = img
@@ -163,34 +168,36 @@ class DigitDataGenerator(keras.utils.Sequence):
         indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
 
         # Generate data
-        X, y = self.__data_generation(indices)
+        x, y = self.__data_generation(indices)
+        x = x.astype(np.float32)
 
-        return X, y
+        return x[:, :, :, np.newaxis], y
 
     def on_epoch_end(self):
-        'Updates indexes after each epoch'
+        """Updates indexes after each epoch"""
         self.indices = np.arange(len(self.dataset))
         if self.shuffle:
             np.random.shuffle(self.indices)
 
     def __data_generation(self, indices):
-        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
-        X = self.dataset.digits[indices]
+        """Generates data containing batch_size samples"""
+        x = self.dataset.digits[indices]
         y = self.dataset.labels[indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=9)
+        return x, keras.utils.to_categorical(y, num_classes=9)
 
 
 class BalancedMnistDigitDataGenerator(DigitDataGenerator):
     def __init__(self, dataset: DigitDataset, mnist_data: Tuple[np.ndarray, np.ndarray], batch_size=32, shuffle=True,
-                 **kwargs):
+                 separate_mnist=True, **kwargs):
         self.mnist_x = mnist_data[0]
         self.mnist_y = mnist_data[1]
+        self.separate_mnist = separate_mnist
         super().__init__(dataset, batch_size, shuffle, **kwargs)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return int(np.floor(len(self.dataset) * 2 / self.batch_size))
+        return int(np.ceil(len(self.dataset) * 2 / self.batch_size))
 
     def __getitem__(self, index):
         """Generate one batch of data"""
@@ -200,10 +207,12 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         mnist_indices = self.mnist_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
 
         # Generate data
-        X, y = self.__data_generation(digit_indices)
-        Xm, ym = self.__mnist_data_generation(mnist_indices)
+        xd, yd = self.__data_generation(digit_indices)
+        xm, ym = self.__mnist_data_generation(mnist_indices)
 
-        return np.vstack((X, Xm)), np.vstack((y, ym))
+        x = np.vstack((xd, xm)).astype(np.float32)
+        y = np.vstack((yd, ym))
+        return x[:, :, :, np.newaxis], y
 
     def on_epoch_end(self):
         super().on_epoch_end()
@@ -220,7 +229,7 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         X = self.dataset.digits[indices]
         y = self.dataset.labels[indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=18)
+        return X, keras.utils.to_categorical(y, num_classes=18 if self.separate_mnist else 9)
 
     def __mnist_data_generation(self, indices, ):
         """
@@ -229,16 +238,16 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         :return: A tuple of a digit array and a class categorical array
         """
         X = self.mnist_x[indices]
-        y = self.mnist_y[indices] + 8
+        y = self.mnist_y[indices] + (8 if self.separate_mnist else 0)
 
-        return X, keras.utils.to_categorical(y, num_classes=18)
+        return X, keras.utils.to_categorical(y, num_classes=18 if self.separate_mnist else 9)
 
 
 def generate_composition():
     transform = RandomPerspectiveTransform()
     images = [[] for _ in range(9)]
     for i in range(0, 9):
-        img = cv2.imread(f"digits/{i * 917}.png", cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(f"datasets/digits/{i * 917}.png", cv2.IMREAD_GRAYSCALE)
         img = cv2.rectangle(img, (16, 16), (112, 112), (255, 255, 255), 2)
         images[i].append(img)
         for _ in range(4):
@@ -279,6 +288,7 @@ def transform_sudoku():
     plt.show()
 
 
-# transform_sudoku()
-test_generator()
-# generate_composition()
+if __name__ == '__main__':
+    # transform_sudoku()
+    test_generator()
+    # generate_composition()
