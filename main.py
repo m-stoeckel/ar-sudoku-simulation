@@ -1,7 +1,7 @@
 import cv2
 from PIL import Image
 
-from sudoku_generator import MNIST
+from digit_dataset import MNIST
 from sudoku_permutation import PermutationSudokuGenerator, MajorSwitch, Rotation
 
 

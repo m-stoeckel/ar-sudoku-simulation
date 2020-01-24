@@ -9,15 +9,16 @@ class ImageTransform:
 
 
 class RandomPerspectiveTransform(ImageTransform):
-    def __init__(self, max_shift=0.25, background_color=None):
+    def __init__(self, max_shift=0.1, background_color=None):
         self.max_shift = max_shift
         self.bg = background_color
         self.bg_mode = cv2.BORDER_REPLICATE if self.bg is None else cv2.BORDER_CONSTANT
-        self.flags = [cv2.INTER_LINEAR]
+        self.flags = cv2.INTER_LINEAR
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         mat = self.get_transform_matrix(img)
-        img = cv2.warpPerspective(img, mat, img.size, flags=self.flags, borderMode=self.bg_mode, borderValue=self.bg)
+        img = cv2.warpPerspective(img, mat, img.shape[:2], flags=self.flags,
+                                  borderMode=self.bg_mode, borderValue=self.bg)
         return img
 
     def get_transform_matrix(self, img):
@@ -25,13 +26,14 @@ class RandomPerspectiveTransform(ImageTransform):
         TODO
         """
         x_dim, y_dim = img.shape[:2]
+        x_dim, y_dim = x_dim - 1, y_dim - 1
         x_pos = np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
         y_pos = np.random.randint(0, np.floor(y_dim * self.max_shift) + 1, 4)
-        pa = [(x_pos[0], y_pos[0]),
-              (x_dim - x_pos[1], y_pos[1]),
-              (x_dim - x_pos[2], y_dim - y_pos[2]),
-              (x_pos[3], y_dim - y_pos[3])]
-        pb = [(0, 0), (x_dim, 0), (x_dim, y_dim), (0, y_dim)]
+        pa = np.array([[x_pos[0], y_pos[0]],
+                       [x_dim - x_pos[1], y_pos[1]],
+                       [x_dim - x_pos[2], y_dim - y_pos[2]],
+                       [x_pos[3], y_dim - y_pos[3]]], dtype=np.float32)
+        pb = np.array([[0, 0], [x_dim, 0], [x_dim, y_dim], [0, y_dim]], dtype=np.float32)
         return cv2.getPerspectiveTransform(pa, pb)
 
 

@@ -1,37 +1,16 @@
 import multiprocessing as mp
-import os
 from pathlib import Path
 from typing import Union, List
 
 from PIL import Image
 import cv2
 import numpy as np
-from sklearn.datasets import fetch_openml
-from matplotlib import pyplot as plt
+
+from digit_dataset import MNIST
 
 BLACK = (0, 0, 0, 255)
 WHITE = (255, 255, 255, 255)
 WHITE_NO_ALPHA = (255, 255, 255, 0)
-
-
-class MNIST:
-    def __init__(self):
-        print("Loading MNIST dataset")
-        # Load data from https://www.openml.org/d/554
-        os.makedirs('datasets/', exist_ok=True)
-        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
-        self.x = np.array(x).reshape((70000, 28, 28))
-        self.y = np.array(y)
-        self.indices_by_number = [np.flatnonzero(self.y == str(i)) for i in range(0, 10)]
-        del x, y
-
-    def get_random(self, digit: int) -> np.ndarray:
-        """
-        Get a random sample of the given digit.
-
-        :returns: 2D numpy array of 28x28 pixels
-        """
-        return self.x[np.random.choice(self.indices_by_number[digit])]
 
 
 class Sudoku:
