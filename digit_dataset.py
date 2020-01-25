@@ -21,13 +21,13 @@ class MNIST:
         x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
-        shuf = np.arange(70000)
+        indices = np.arange(70000)
         if shuffle:
-            np.random.shuffle(shuf)
-        self.train_x = x[shuf[:60000]]
-        self.train_y = y[shuf[:60000]]
-        self.test_x = x[shuf[60000:]]
-        self.test_y = y[shuf[60000:]]
+            np.random.shuffle(indices)
+        self.train_x = x[indices[:60000]]
+        self.train_y = y[indices[:60000]]
+        self.test_x = x[indices[60000:]]
+        self.test_y = y[indices[60000:]]
         self.train_indices_by_number = [np.flatnonzero(self.train_y == i) for i in range(0, 10)]
         self.test_indices_by_number = [np.flatnonzero(self.test_y == i) for i in range(0, 10)]
         del x, y
