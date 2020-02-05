@@ -1,3 +1,5 @@
+from typing import Union
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,6 +14,41 @@ class ImageTransform:
         :return: The transformed image.
         """
         pass
+
+
+class BoxBlur(ImageTransform):
+    def __init__(self, ksize=2):
+        self.ksize = ksize if isinstance(ksize, tuple) else (ksize, ksize)
+        pass
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        return cv2.blur(img, self.ksize)
+
+
+class GaussianNoise(ImageTransform):
+    def __init__(self, mu=0, sigma=16):
+        self.mu = mu
+        self.sigma = sigma
+        pass
+
+    def noise(self, size):
+        return np.random.normal(self.mu, self.sigma, size)
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        noise = self.noise(img.shape)
+        img = img.astype(np.float) + noise
+        img = np.clip(img, 0, 255)
+        return img.astype(np.uint8)
+
+
+class GaussianBlur(ImageTransform):
+    def __init__(self, ksize: Union[int, tuple] = 3, sigma=2):
+        self.ksize = ksize if isinstance(ksize, tuple) else (ksize, ksize)
+        self.sigma = sigma
+        pass
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        return cv2.GaussianBlur(img, self.ksize, self.sigma)
 
 
 class RandomPerspectiveTransform(ImageTransform):
@@ -99,9 +136,9 @@ class LensDistortion(ImageTransform):
         return img
 
 
-def test_camera():
+def test():
     img = cv2.imread("sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
-    transform = LensDistortion(dist_coeffs=np.array([0, 0.5, 0, 0, 0]))
+    transform = GaussianBlur(3)
     img = transform.apply(img)
 
     plt.imshow(img)
@@ -111,4 +148,4 @@ def test_camera():
 
 
 if __name__ == '__main__':
-    test_camera()
+    test()
