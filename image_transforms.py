@@ -26,7 +26,7 @@ class BoxBlur(ImageTransform):
 
 
 class GaussianNoise(ImageTransform):
-    def __init__(self, mu=0, sigma=16):
+    def __init__(self, mu=0, sigma=8):
         self.mu = mu
         self.sigma = sigma
         pass
@@ -42,7 +42,7 @@ class GaussianNoise(ImageTransform):
 
 
 class GaussianBlur(ImageTransform):
-    def __init__(self, ksize: Union[int, tuple] = 3, sigma=2):
+    def __init__(self, ksize: Union[int, tuple] = 3, sigma=0):
         self.ksize = ksize if isinstance(ksize, tuple) else (ksize, ksize)
         self.sigma = sigma
         pass
@@ -138,8 +138,9 @@ class LensDistortion(ImageTransform):
 
 def test():
     img = cv2.imread("sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
-    transform = GaussianBlur(3)
-    img = transform.apply(img)
+    img = GaussianNoise().apply(img)
+    img = RandomPerspectiveTransform(0.2).apply(img)
+    img = GaussianBlur().apply(img)
 
     plt.imshow(img)
     plt.imshow(img, cmap="gray")
