@@ -141,17 +141,14 @@ class DigitDataset:
     def __getitem__(self, item):
         return self.digits[item]
 
-    def add_transforms(self, transforms: Union[ImageTransform, List[ImageTransform]]):
+    def add_transforms(self, *transforms: ImageTransform):
         """
         Add a transform or a list of sequential transforms to this generator.
 
         :param transforms: Single ImageTransform or list of sequential ImageTransform
         :return: None
         """
-        if isinstance(transforms, ImageTransform):
-            transforms = [transforms]
-        elif type(transforms) is not list:
-            transforms = list(transforms)
+        transforms = list(transforms)
         self.transforms.append(transforms)
 
 
