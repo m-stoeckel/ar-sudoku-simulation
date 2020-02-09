@@ -5,6 +5,7 @@ from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 
 from digit_dataset import BalancedMnistDigitDataGenerator, DigitDataset, RandomPerspectiveTransform, \
     RandomPerspectiveTransformY, FilteredMNIST, MNIST, np
+from image_transforms import GaussianNoise, GaussianBlur
 
 tf.get_logger().setLevel('ERROR')
 
@@ -12,9 +13,9 @@ tf.get_logger().setLevel('ERROR')
 # SGD or Adam work well
 def get_linear_model(n_classes=18):
     model = Sequential()
-    model.add(Dense(512, activation='relu', input_shape=(28 ** 2,)))
+    model.add(Dense(128, activation='relu', input_shape=(28 ** 2,)))
     model.add(Dropout(0.2))
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(n_classes, activation='softmax'))
     return model
@@ -23,15 +24,17 @@ def get_linear_model(n_classes=18):
 # Adadelta or Adagrad work well
 def get_cnn_model(n_classes=18):
     model = Sequential()
-    model.add(Conv2D(32, kernel_size=(3, 3),
+    model.add(Conv2D(16, kernel_size=(3, 3),
                      activation='relu',
                      input_shape=(28, 28, 1)))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Conv2D(32, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
     return model
 
@@ -98,20 +101,22 @@ def train_cnn():
 
     # Crate large training dataset
     train_digit_dataset = DigitDataset()
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.2))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.25))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.333))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.2))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.25))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.333))
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.1), GaussianBlur())
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.15), GaussianBlur())
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.2), GaussianBlur())
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransformY(0.1), GaussianBlur())
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransformY(0.15), GaussianBlur())
+    train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransformY(0.2), GaussianBlur())
     train_digit_dataset.apply_transforms(keep=False)
     print(train_digit_dataset.digits.shape)
     train_generator = BalancedMnistDigitDataGenerator(train_digit_dataset, mnist_dataset.train, batch_size=batch_size)
 
     # Create separate, small validation dataset
     test_digit_dataset = DigitDataset()
-    test_digit_dataset.add_transforms(RandomPerspectiveTransform())
-    test_digit_dataset.apply_transforms(keep=True)
+    test_digit_dataset.add_transforms(GaussianNoise(sigma=4), GaussianBlur())
+    test_digit_dataset.add_transforms(GaussianNoise(sigma=4), RandomPerspectiveTransform(), GaussianBlur())
+    test_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(), GaussianBlur())
+    test_digit_dataset.apply_transforms(keep=False)
     print(test_digit_dataset.digits.shape)
     test_generator = BalancedMnistDigitDataGenerator(test_digit_dataset, mnist_dataset.test, batch_size=batch_size)
 
