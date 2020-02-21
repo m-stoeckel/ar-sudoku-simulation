@@ -2,15 +2,9 @@ import multiprocessing as mp
 from pathlib import Path
 from typing import Union, List
 
-from PIL import Image
-import cv2
 import numpy as np
 
-from digit.digit_dataset import MNIST
-
-BLACK = (0, 0, 0, 255)
-WHITE = (255, 255, 255, 255)
-WHITE_NO_ALPHA = (255, 255, 255, 0)
+DEBUG = False
 
 
 class Sudoku:
@@ -166,88 +160,3 @@ class SudokuGenerator:
                     larr.append(sudoku)
                     break
         out_q.put(larr)
-
-    @staticmethod
-    def get_sudoku_grid(cell_size=28, major_line_width=2, minor_line_width=1):
-        grid_size = cell_size * 9 + 4 * major_line_width + 6 * minor_line_width
-
-        data = np.ndarray((grid_size, grid_size, 4), dtype=np.uint8)
-        data.fill(255)
-        coords = np.zeros(10, dtype=np.int)
-        idx = 0
-        for i in range(10):
-            if i % 3 == 0:  # draw major line
-                data[idx:idx + major_line_width, :, 0:3] = 0
-                data[:, idx:idx + major_line_width, 0:3] = 0
-                coords[i] = idx + major_line_width
-                idx += major_line_width + cell_size
-            else:  # draw minor line
-                data[idx:idx + minor_line_width, :, 0:3] = 0
-                data[:, idx:idx + minor_line_width, 0:3] = 0
-                coords[i] = idx + minor_line_width
-                idx += minor_line_width + cell_size
-
-        return data, coords
-
-    def draw_sudoku_pil(self, idx: int, masking_rate=0.7):
-        sudoku = self.generated[idx].data
-
-        mask = np.random.choice([True, False], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
-
-        grid_image, coords = self.get_sudoku_grid()
-
-        x_offset = 5
-        y_offset = 4
-        for i in range(9):
-            for j in range(9):
-                digit = sudoku[i][j]
-                x_coord, y_coord = coords[i], coords[j]
-                if digit == 0:
-                    continue
-                elif not mask[i][j]:
-                    (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
-                    grid_image = cv2.putText(grid_image, str(digit),
-                                             (x_coord + x_offset, y_coord + text_height + y_offset),
-                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 1, cv2.LINE_AA)
-        return grid_image
-
-    def draw_sudoku_pil_mnist(self, idx: int, masking_rate=0.7, mnist: MNIST = None, mnist_rate=0.2):
-        np.random.seed(idx)  # FIXME
-        sudoku = self.generated[idx]
-
-        # Mask setup
-        printed_digit_mask = np.random.choice([False, True], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
-        mnist_digit_mask = np.random.choice([True, False], size=sudoku.shape, p=[mnist_rate, 1 - mnist_rate])
-        mnist_digit_mask[printed_digit_mask] = False
-
-        # Image data setup
-        grid_image, coords = self.get_sudoku_grid()
-        mnist_image = np.zeros(grid_image.shape, dtype=np.uint8)
-
-        # Drawing
-        x_offset = 5
-        y_offset = 4
-        for i in range(9):
-            for j in range(9):
-                digit = sudoku[i][j]
-                x_coord, y_coord = coords[i], coords[j]
-                if digit == 0:
-                    continue
-                if printed_digit_mask[i][j]:
-                    (text_width, text_height) = cv2.getTextSize(str(digit), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)[0]
-                    grid_image = cv2.putText(grid_image, str(digit),
-                                             (x_coord + x_offset, y_coord + text_height + y_offset),
-                                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 1, cv2.LINE_AA)
-                elif mnist_digit_mask[i][j]:
-                    mnist_digit = np.array(mnist.get_random(digit), dtype=np.uint8).repeat(4).reshape((28, 28, 4))
-                    mnist_digit = cv2.bitwise_not(mnist_digit)
-                    mask = np.any(mnist_digit[:, :, :3] != 255, axis=2)
-                    mnist_digit[:, :, 3] = 0
-                    mnist_digit[mask, 3] = 255
-                    mnist_image[y_coord:y_coord + 28, x_coord:x_coord + 28] = mnist_digit
-
-        # Image composition
-        img = cv2.addWeighted(grid_image, 1, mnist_image, 1, 0)
-        cv2.imshow("img", img)
-        img = Image.alpha_composite(Image.fromarray(grid_image), Image.fromarray(mnist_image))
-        return np.array(img)

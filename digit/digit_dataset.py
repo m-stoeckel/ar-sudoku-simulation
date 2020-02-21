@@ -18,7 +18,7 @@ class MNIST:
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
         os.makedirs('../datasets/', exist_ok=True)
-        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
+        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="../datasets/", cache=True)
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
         indices = np.arange(70000)
