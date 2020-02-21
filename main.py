@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from PIL import Image
 
 from digit.digit_dataset import MNIST
@@ -43,5 +44,6 @@ if __name__ == '__main__':
     sgen.build()
     print(sgen.generated[2].data)
     for p in [0., .2, .4, .6, .8, 1.0]:
+        np.random.seed(2)
         save_img(SudokuRenderer.draw_sudoku_pil_mnist(sgen.generated[2], mnist=mnist, mnist_rate=p),
                  f"sudoku_0.7_{p}.png")

@@ -40,6 +40,14 @@ class MNIST:
         """
         return self.train_x[np.random.choice(self.train_indices_by_number[digit])]
 
+    def get_ordered(self, digit: int, index: int) -> np.ndarray:
+        """
+        Get a random sample of the given digit.
+
+        :returns: 2D numpy array of 28x28 pixels
+        """
+        return self.train_x[self.train_indices_by_number[digit][index]]
+
     @property
     def train(self):
         """
@@ -233,7 +241,7 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         x /= 255.
 
         if self.flatten:
-            x = x.reshape(-1, 28**2)
+            x = x.reshape(-1, 28 ** 2)
         else:
             x = x[:, :, :, np.newaxis]
 

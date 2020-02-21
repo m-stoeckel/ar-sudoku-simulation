@@ -80,8 +80,11 @@ class SudokuRenderer:
                                              (x_coord + x_offset, y_coord + text_height + y_offset),
                                              cv2.FONT_HERSHEY_SIMPLEX, 0.8, Color.BLACK.value, 1, cv2.LINE_AA)
                 elif mnist_digit_mask[i][j]:
-                    mnist_digit = np.array(mnist.get_random(digit), dtype=np.uint8).repeat(4).reshape((28, 28, 4))
+                    digit_index = i * 10 + j
+                    mnist_digit = np.array(mnist.get_ordered(digit, digit_index), dtype=np.uint8)
+                    mnist_digit = mnist_digit.repeat(4).reshape((28, 28, 4))
                     mnist_digit = cv2.bitwise_not(mnist_digit)
+
                     mask = SudokuRenderer.get_bool_mask_from_color(mnist_digit)
                     mnist_digit[:, :, 3] = 0
                     mnist_digit[mask, 3] = 255
