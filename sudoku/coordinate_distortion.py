@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from sudoku_generator import SudokuGenerator
+from sudoku.sudoku_generator import SudokuGenerator
 
 if __name__ == '__main__':
     img, coords = SudokuGenerator.get_sudoku_grid(cell_size=10)

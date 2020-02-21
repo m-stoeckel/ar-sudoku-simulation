@@ -1,13 +1,13 @@
 import os
 import zipfile
 from pathlib import Path
-from typing import List, Union, Tuple
+from typing import List, Tuple
 
 import keras
 from sklearn.datasets import fetch_openml
 from tqdm import trange
 
-from image_transforms import *
+from image.image_transforms import *
 
 DEBUG = False
 DIGIT_COUNT = 915
@@ -17,7 +17,7 @@ class MNIST:
     def __init__(self, shuffle=True):
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
-        os.makedirs('datasets/', exist_ok=True)
+        os.makedirs('../datasets/', exist_ok=True)
         x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
@@ -90,7 +90,7 @@ class DigitDataset:
 
         if digits_path.endswith(".zip"):
             self.digit_path = Path("datasets/digits/")
-            if not os.path.exists("datasets/digits/") or len(os.listdir("digits")) < 9 * DIGIT_COUNT:
+            if not os.path.exists("../datasets/digits/") or len(os.listdir("digits")) < 9 * DIGIT_COUNT:
                 with zipfile.ZipFile(digits_path) as f_zip:
                     f_zip.extractall("datasets/")
         else:
@@ -306,7 +306,7 @@ def test_generator():
 
 def transform_sudoku():
     transform = RandomPerspectiveTransform()
-    img = cv2.imread(f"sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread(f"../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
     transformed = transform.apply(img)
     plt.imshow(transformed, cmap="gray")
     plt.axis('off')

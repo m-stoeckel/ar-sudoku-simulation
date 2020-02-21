@@ -1,8 +1,8 @@
 import cv2
 from PIL import Image
 
-from digit_dataset import MNIST
-from sudoku_permutation import PermutationSudokuGenerator, MajorSwitch, Rotation
+from digit.digit_dataset import MNIST
+from sudoku.sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
 
 
 def save_img(img: Image, name: str):

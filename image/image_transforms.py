@@ -137,7 +137,7 @@ class LensDistortion(ImageTransform):
 
 
 def test():
-    img = cv2.imread("sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread("../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
     img = GaussianNoise().apply(img)
     img = RandomPerspectiveTransform(0.2).apply(img)
     img = GaussianBlur().apply(img)

@@ -3,9 +3,9 @@ import tensorflow as tf
 from keras import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 
-from digit_dataset import BalancedMnistDigitDataGenerator, DigitDataset, RandomPerspectiveTransform, \
+from digit.digit_dataset import BalancedMnistDigitDataGenerator, DigitDataset, RandomPerspectiveTransform, \
     RandomPerspectiveTransformY, FilteredMNIST, MNIST, np
-from image_transforms import GaussianNoise, GaussianBlur
+from image.image_transforms import GaussianNoise, GaussianBlur
 
 tf.get_logger().setLevel('ERROR')
 

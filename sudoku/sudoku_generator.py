@@ -6,7 +6,7 @@ from PIL import Image
 import cv2
 import numpy as np
 
-from digit_dataset import MNIST
+from digit.digit_dataset import MNIST
 
 BLACK = (0, 0, 0, 255)
 WHITE = (255, 255, 255, 255)
@@ -247,5 +247,7 @@ class SudokuGenerator:
                     mnist_image[y_coord:y_coord + 28, x_coord:x_coord + 28] = mnist_digit
 
         # Image composition
+        img = cv2.addWeighted(grid_image, 1, mnist_image, 1, 0)
+        cv2.imshow("img", img)
         img = Image.alpha_composite(Image.fromarray(grid_image), Image.fromarray(mnist_image))
         return np.array(img)
