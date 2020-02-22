@@ -36,7 +36,7 @@ def temp_row_transform():
 if __name__ == '__main__':
     # temp_row_transform()
 
-    mnist = Chars74KI()
+    digits = Chars74KI(resolution=28)
     sgen = PermutationSudokuGenerator(1, workers=8)
     sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2)))
     sgen.permutations.append(MajorSwitch(column_switch=(1, 0, 2)))
@@ -45,5 +45,5 @@ if __name__ == '__main__':
     print(sgen.generated[2].data)
     for p in [0., .2, .4, .6, .8, 1.0]:
         np.random.seed(2)
-        save_img(SudokuRenderer.draw_sudoku_pil_mnist(sgen.generated[2], mnist=mnist, mnist_rate=p),
+        save_img(SudokuRenderer.draw_sudoku_pil_mnist(sgen.generated[2], digits=digits, hw_rate=p, cell_size=28),
                  f"sudoku_0.7_{p}.png")

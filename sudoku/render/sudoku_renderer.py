@@ -1,7 +1,9 @@
+from typing import Union
+
 import cv2
 import numpy as np
 
-from digit.digit_dataset import MNIST, plt
+from digit.digit_dataset import MNIST, plt, DigitDataset
 from sudoku.colors import Color
 
 DEBUG = True
@@ -55,14 +57,15 @@ class SudokuRenderer:
         return grid_image
 
     @staticmethod
-    def draw_sudoku_pil_mnist(sudoku, masking_rate=0.7, mnist: MNIST = None, mnist_rate=0.2):
+    def draw_sudoku_pil_mnist(sudoku, masking_rate=0.7, digits: Union[MNIST, DigitDataset] = None, hw_rate=0.2,
+                              cell_size=28):
         # Mask setup
         printed_digit_mask = np.random.choice([False, True], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
-        mnist_digit_mask = np.random.choice([True, False], size=sudoku.shape, p=[mnist_rate, 1 - mnist_rate])
+        mnist_digit_mask = np.random.choice([True, False], size=sudoku.shape, p=[hw_rate, 1 - hw_rate])
         mnist_digit_mask[printed_digit_mask] = False
 
         # Image data setup
-        grid_image, coords = SudokuRenderer.get_sudoku_grid()
+        grid_image, coords = SudokuRenderer.get_sudoku_grid(cell_size=cell_size)
         mnist_image = np.zeros(grid_image.shape, dtype=np.uint8)
 
         # Drawing
@@ -81,14 +84,14 @@ class SudokuRenderer:
                                              cv2.FONT_HERSHEY_SIMPLEX, 0.8, Color.BLACK.value, 1, cv2.LINE_AA)
                 elif mnist_digit_mask[i][j]:
                     digit_index = i * 10 + j
-                    mnist_digit = np.array(mnist.get_ordered(digit, digit_index), dtype=np.uint8)
-                    mnist_digit = mnist_digit.repeat(4).reshape((28, 28, 4))
+                    mnist_digit = np.array(digits.get_ordered(digit, digit_index), dtype=np.uint8)
+                    mnist_digit = mnist_digit.repeat(4).reshape((cell_size, cell_size, 4))
                     mnist_digit = cv2.bitwise_not(mnist_digit)
 
                     mask = SudokuRenderer.get_bool_mask_from_color(mnist_digit)
                     mnist_digit[:, :, 3] = 0
                     mnist_digit[mask, 3] = 255
-                    mnist_image[y_coord:y_coord + 28, x_coord:x_coord + 28] = mnist_digit
+                    mnist_image[y_coord:y_coord + cell_size, x_coord:x_coord + cell_size] = mnist_digit
 
         # Image composition
         img = SudokuRenderer.composite_threshold(grid_image, mnist_image)
