@@ -116,16 +116,25 @@ class DigitDataset:
         for i in trange(9 * self.digit_count, desc="Loading images"):
             digit_path = self.digit_path / f"{i}.png"
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
-            if DEBUG:  # TODO: remove
-                img = cv2.bitwise_not(img)
-                img = cv2.rectangle(img, (0, 0), (self.res - 1, self.res - 1), color=(0, 0, 0),
-                                    thickness=2)
-            if self.res != img.shape[0]:
-                interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
-                self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
-            else:
-                self.digits[i] = img
-            self.labels[i] = np.floor(i / self.digit_count)
+            self._add_digit_and_label(i, img)
+
+    def _add_digit_and_label(self, i, img):
+        if self.res != img.shape[0]:
+            interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
+            self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
+        else:
+            self.digits[i] = img
+        self.labels[i] = np.floor(i / self.digit_count)
+
+    def add_transforms(self, *transforms: ImageTransform):
+        """
+        Add a transform or a list of sequential transforms to this generator.
+
+        :param transforms: Single ImageTransform or list of sequential ImageTransform
+        :return: None
+        """
+        transforms = list(transforms)
+        self.transforms.append(transforms)
 
     def apply_transforms(self, keep=True):
         if not self.transforms:
@@ -151,16 +160,6 @@ class DigitDataset:
     def __getitem__(self, item):
         return self.digits[item]
 
-    def add_transforms(self, *transforms: ImageTransform):
-        """
-        Add a transform or a list of sequential transforms to this generator.
-
-        :param transforms: Single ImageTransform or list of sequential ImageTransform
-        :return: None
-        """
-        transforms = list(transforms)
-        self.transforms.append(transforms)
-
 
 class Chars74KI(DigitDataset):
     """
@@ -181,12 +180,7 @@ class Chars74KI(DigitDataset):
         for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
             img = cv2.bitwise_not(img)
-            if self.res != img.shape[0]:
-                interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
-                self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
-            else:
-                self.digits[i] = img
-            self.labels[i] = np.floor(i / self.digit_count)
+            self._add_digit_and_label(i, img)
 
     def get_random(self, digit: int) -> np.ndarray:
         """
