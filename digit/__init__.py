@@ -1,1 +1,2 @@
-from .digit_dataset import MNIST, FilteredMNIST, DigitDataGenerator, BalancedMnistDigitDataGenerator
+from .digit_dataset import MNIST, FilteredMNIST, DigitDataset, Chars74KI, DigitDataGenerator, \
+    BalancedMnistDigitDataGenerator

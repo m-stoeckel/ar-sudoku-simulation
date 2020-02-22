@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from digit.digit_dataset import MNIST
+from digit.digit_dataset import Chars74KI
 from sudoku.render.sudoku_renderer import SudokuRenderer
 from sudoku.sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
 
@@ -36,7 +36,7 @@ def temp_row_transform():
 if __name__ == '__main__':
     # temp_row_transform()
 
-    mnist = MNIST()
+    mnist = Chars74KI()
     sgen = PermutationSudokuGenerator(1, workers=8)
     sgen.permutations.append(MajorSwitch(row_switch=(1, 0, 2)))
     sgen.permutations.append(MajorSwitch(column_switch=(1, 0, 2)))

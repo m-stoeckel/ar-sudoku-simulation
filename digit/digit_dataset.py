@@ -5,20 +5,19 @@ from typing import List, Tuple
 
 import keras
 from sklearn.datasets import fetch_openml
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from image.image_transforms import *
 
 DEBUG = False
-DIGIT_COUNT = 915
 
 
 class MNIST:
     def __init__(self, shuffle=True):
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
-        os.makedirs('../datasets/', exist_ok=True)
-        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="../datasets/", cache=True)
+        os.makedirs('datasets/', exist_ok=True)
+        x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
         indices = np.arange(70000)
@@ -91,27 +90,30 @@ class FilteredMNIST(MNIST):
 
 
 class DigitDataset:
+    default_digit_parent = "datasets/"
+    default_digit_path = "datasets/digits/"
 
-    def __init__(self, digits_path="datasets/digits/", resolution=28):
+    def __init__(self, digits_path="datasets/digits/", resolution=28, digit_count=915):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
+        self.digit_count = digit_count
         if digits_path.endswith(".zip"):
-            self.digit_path = Path("datasets/digits/")
-            if not os.path.exists("../datasets/digits/") or len(os.listdir("digits")) < 9 * DIGIT_COUNT:
+            self.digit_path = Path(self.default_digit_path)
+            if not os.path.exists(self.default_digit_path):
                 with zipfile.ZipFile(digits_path) as f_zip:
-                    f_zip.extractall("datasets/")
+                    f_zip.extractall(self.default_digit_parent)
         else:
             self.digit_path: Path = Path(digits_path)
 
         self.transforms: List[List[ImageTransform]] = list()
         self.res = resolution
-        self.digits = np.empty((9 * DIGIT_COUNT, self.res, self.res), dtype=np.uint8)
-        self.labels = np.empty(9 * DIGIT_COUNT, dtype=int)
+        self.digits = np.empty((9 * self.digit_count, self.res, self.res), dtype=np.uint8)
+        self.labels = np.empty(9 * self.digit_count, dtype=int)
         self._load()
 
     def _load(self):
-        for i in trange(9 * DIGIT_COUNT, desc="Loading images"):
+        for i in trange(9 * self.digit_count, desc="Loading images"):
             digit_path = self.digit_path / f"{i}.png"
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
             if DEBUG:  # TODO: remove
@@ -123,7 +125,7 @@ class DigitDataset:
                 self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
             else:
                 self.digits[i] = img
-            self.labels[i] = np.floor(i / DIGIT_COUNT)
+            self.labels[i] = np.floor(i / self.digit_count)
 
     def apply_transforms(self, keep=True):
         if not self.transforms:
@@ -158,6 +160,49 @@ class DigitDataset:
         """
         transforms = list(transforms)
         self.transforms.append(transforms)
+
+
+class Chars74KI(DigitDataset):
+    """
+    Class for the handwritten numbers part of the Chars74KI "EnglishHnd" dataset.
+    :source: http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/
+    """
+
+    default_digit_path = "datasets/digits_hnd/"
+
+    def __init__(self):
+        super().__init__(digits_path="datasets/digits_hnd/", resolution=28, digit_count=55)
+
+    def _load(self):
+        all_digits = []
+        for i in range(1, 10):
+            for file_name in os.listdir(str(self.digit_path / f"{i}")):
+                all_digits.append(self.digit_path / (f"{i}/" + file_name))
+        for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
+            img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
+            img = cv2.bitwise_not(img)
+            if self.res != img.shape[0]:
+                interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
+                self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
+            else:
+                self.digits[i] = img
+            self.labels[i] = np.floor(i / self.digit_count)
+
+    def get_random(self, digit: int) -> np.ndarray:
+        """
+        Get a random sample of the given digit.
+
+        :returns: 2D numpy array of 28x28 pixels
+        """
+        return self.digits[np.random.randint(self.digit_count * (digit - 1), self.digit_count * digit)]
+
+    def get_ordered(self, digit: int, index: int) -> np.ndarray:
+        """
+        Get a random sample of the given digit.
+
+        :returns: 2D numpy array of 28x28 pixels
+        """
+        return self.digits[self.digit_count * (digit - 1) + (index % self.digit_count)]
 
 
 class DigitDataGenerator(keras.utils.Sequence):
