@@ -161,6 +161,13 @@ class DigitDataset:
         return self.digits[item]
 
 
+def plot_img(img, figsize=(4, 3)):
+    plt.figure(figsize=figsize)
+    plt.imshow(img, cmap='gray')
+    plt.axis('off')
+    plt.show()
+
+
 class Chars74KI(DigitDataset):
     """
     Class for the handwritten numbers part of the Chars74KI "EnglishHnd" dataset.
@@ -169,8 +176,8 @@ class Chars74KI(DigitDataset):
 
     default_digit_path = "datasets/digits_hnd/"
 
-    def __init__(self):
-        super().__init__(digits_path="datasets/digits_hnd.zip", resolution=28, digit_count=55)
+    def __init__(self, digits_path="datasets/digits_hnd.zip", resolution=28, digit_count=55):
+        super().__init__(digits_path=digits_path, resolution=resolution, digit_count=digit_count)
 
     def _load(self):
         all_digits = []
@@ -179,8 +186,31 @@ class Chars74KI(DigitDataset):
                 all_digits.append(self.digit_path / (f"{i}/" + file_name))
         for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
+            img = self._crop(img)
             img = cv2.bitwise_not(img)
             self._add_digit_and_label(i, img)
+
+    def _crop(self, img):
+        """
+        Crop off the image side which is empty. Crop to the center if both sides are empty or both sides contain part
+        of the digit.
+        """
+        if np.any(img[:, :300] == 0) == np.any(img[:, 900:] == 0):
+            if DEBUG:
+                img[:, :150] = 128
+                img[:, 1050:] = 128
+                plot_img(img)
+            return img[:, 150:1050]
+        elif np.any(img[:, :300] == 0):
+            if DEBUG:
+                img[:, 900:] = 128
+                plot_img(img)
+            return img[:, :900]
+        else:
+            if DEBUG:
+                img[:, :300] = 128
+                plot_img(img)
+            return img[:, 300:]
 
     def get_random(self, digit: int) -> np.ndarray:
         """
