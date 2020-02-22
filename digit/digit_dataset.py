@@ -93,7 +93,7 @@ class DigitDataset:
     default_digit_parent = "datasets/"
     default_digit_path = "datasets/digits/"
 
-    def __init__(self, digits_path="datasets/digits/", resolution=28, digit_count=915):
+    def __init__(self, digits_path="datasets/digits.zip", resolution=28, digit_count=915):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
@@ -171,7 +171,7 @@ class Chars74KI(DigitDataset):
     default_digit_path = "datasets/digits_hnd/"
 
     def __init__(self):
-        super().__init__(digits_path="datasets/digits_hnd/", resolution=28, digit_count=55)
+        super().__init__(digits_path="datasets/digits_hnd.zip", resolution=28, digit_count=55)
 
     def _load(self):
         all_digits = []
