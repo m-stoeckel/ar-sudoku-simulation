@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from digit.digit_dataset import MNIST, plt, DigitDataset
-from sudoku.colors import Color
+from sudoku.render.colors import Color
 
 DEBUG = True
 
