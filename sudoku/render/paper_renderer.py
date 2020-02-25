@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 
 from sudoku import Color
+from sudoku.render.colors import uint8_from_number
 from sudoku.render.digital_composition import AlphaComposition
 
 
@@ -61,16 +62,24 @@ class DigitalCompositionLayer(Layer):
             result = np.fliplr(result)
         return result
 
+    def not_empty(self):
+        return len(self.elements)
+
 
 class DrawingLayer(Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.elements: List[np.ndarray] = []
+
+    def not_empty(self):
+        return len(self.elements)
 
 
 class SubstrateLayer(Layer):
     def __init__(self, shape: Tuple[int, int] = None, background_color: Color = None,
                  background_texture: Union[np.ndarray, str] = None,
-                 opacity: Union[int, float] = None, **kwargs):
+                 override_opacity: Union[int, float] = None, print_area=0.98,
+                 **kwargs):
         if background_texture is not None:
             if isinstance(background_texture, np.ndarray):
                 self.background = background_texture
@@ -88,48 +97,41 @@ class SubstrateLayer(Layer):
         else:
             raise RuntimeError("Either background_texture OR shape and background_color must be set.")
 
-        if opacity is not None:
-            self.background[:, :, 3] = self.as_int(opacity)
-
-        self.prints: List[DigitalCompositionLayer] = []
-        self.drawings: List[DrawingLayer] = []
-
-    def add_print(self, layer: DigitalCompositionLayer):
-        self.prints.append(layer)
-
-    def add_drawing(self, layer: DrawingLayer):
-        self.drawings.append(layer)
+        if override_opacity is not None:
+            self.background[:, :, 3] = uint8_from_number(override_opacity)
 
     def compose(self):
-        for print_layer in self.prints:
-            if not print_layer.backside:
-                ...
-            else:
-                ...
-
-        for drawing in self.drawings:
-            if not drawing.backside:
-                ...
-            else:
-                ...
-
-        return ...
-
-    @staticmethod
-    def as_int(opacity):
-        if type(opacity) is float:
-            return np.clip(opacity * 255, 0, 255).astype(np.uint8)
-        else:
-            return np.clip(opacity, 0, 255).astype(np.uint8)
+        return self.background
 
 
 class LayeredPaperRenderer:
-    def __init__(self, shape=(1000, 1000)):
+    def __init__(self, substrate_layer: SubstrateLayer, shape=(1000, 1000), print_area=0.98):
         self.shape = shape
-        self.backside_layer = DigitalCompositionLayer(shape, backside=True)
-        self.background_layer = SubstrateLayer(shape)
-        self.printing_layer = DigitalCompositionLayer(shape)
+        self.print_area = np.clip(print_area, 0.0, 1.0)
+
+        self.backside_drawing_layer = DrawingLayer(shape, backside=True)
+        self.backside_print_layer = DigitalCompositionLayer(shape, backside=True)
+        self.background_layer = substrate_layer
+        self.print_layer = DigitalCompositionLayer(shape)
         self.drawing_layer = DrawingLayer(shape)
+
+    def render(self):
+        draw_composition = AlphaComposition()
+        print_composition = AlphaComposition(self.print_area)
+
+        result = self.background_layer.compose()
+
+        if self.backside_drawing_layer.not_empty():
+            result = print_composition(self.backside_drawing_layer.compose(), result)
+        if self.backside_print_layer.not_empty():
+            result = draw_composition(self.backside_print_layer.compose(), result)
+
+        if self.print_layer.not_empty():
+            result = print_composition(result, self.print_layer.compose())
+        if self.drawing_layer.not_empty():
+            result = draw_composition(result, self.drawing_layer.compose())
+
+        return result
 
 
 class MeshedLayeredPaperRenderer(LayeredPaperRenderer):
