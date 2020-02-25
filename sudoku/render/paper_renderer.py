@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Tuple
 
 import cv2
 import numpy as np
@@ -68,9 +68,9 @@ class DrawingLayer(Layer):
 
 
 class SubstrateLayer(Layer):
-    def __init__(self, shape=None, background_color: Color = None,
+    def __init__(self, shape: Tuple[int, int] = None, background_color: Color = None,
                  background_texture: Union[np.ndarray, str] = None,
-                 opacity=None, **kwargs):
+                 opacity: Union[int, float] = None, **kwargs):
         if background_texture is not None:
             if isinstance(background_texture, np.ndarray):
                 self.background = background_texture
@@ -81,15 +81,15 @@ class SubstrateLayer(Layer):
                 elif self.background.shape[2] == 3:
                     self.background = cv2.cvtColor(self.background, cv2.COLOR_RGB2RGBA)
 
-                if opacity is not None:
-                    self.background[:, :, 3] = self.as_int(opacity)
-
             super().__init__(self.background.shape, **kwargs)
         elif shape is not None and background_color is not None:
             super().__init__(shape, **kwargs)
-            self.background = np.full(self.shape, background_color.value)
+            self.background = np.full((self.shape[0], self.shape[1], 4), background_color.value, dtype=np.uint8)
         else:
-            raise RuntimeError
+            raise RuntimeError("Either background_texture OR shape and background_color must be set.")
+
+        if opacity is not None:
+            self.background[:, :, 3] = self.as_int(opacity)
 
         self.prints: List[DigitalCompositionLayer] = []
         self.drawings: List[DrawingLayer] = []
