@@ -9,11 +9,9 @@ from sudoku.render.digital_composition import AlphaComposition
 
 
 class Layer:
-    def __init__(self, shape: tuple, backside=False, bg_color=Color.NONE):
+    def __init__(self, shape: tuple, backside=False):
         self.backside = backside
         self.shape = shape
-        self.elements: List[np.ndarray] = []
-        self.background_color = bg_color.value
 
     def compose(self):
         pass
@@ -23,6 +21,7 @@ class DigitalCompositionLayer(Layer):
     def __init__(self, shape: tuple, composite=AlphaComposition(), **kwargs):
         super().__init__(shape, **kwargs)
         self.composite = composite
+        self.elements: List[np.ndarray] = []
 
     def add_element(self, element: np.ndarray) -> None:
         """
@@ -68,16 +67,67 @@ class DrawingLayer(Layer):
         super().__init__(*args, **kwargs)
 
 
-class BackgroundLayer(Layer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class SubstrateLayer(Layer):
+    def __init__(self, shape=None, background_color: Color = None,
+                 background_texture: Union[np.ndarray, str] = None,
+                 opacity=None, **kwargs):
+        if background_texture is not None:
+            if isinstance(background_texture, np.ndarray):
+                self.background = background_texture
+            else:
+                self.background = cv2.imread(background_texture, -1)
+                if self.background.shape[2] == 1:
+                    self.background = cv2.cvtColor(self.background, cv2.COLOR_GRAY2RGBA)
+                elif self.background.shape[2] == 3:
+                    self.background = cv2.cvtColor(self.background, cv2.COLOR_RGB2RGBA)
+
+                if opacity is not None:
+                    self.background[:, :, 3] = self.as_int(opacity)
+
+            super().__init__(self.background.shape, **kwargs)
+        elif shape is not None and background_color is not None:
+            super().__init__(shape, **kwargs)
+            self.background = np.full(self.shape, background_color.value)
+        else:
+            raise RuntimeError
+
+        self.prints: List[DigitalCompositionLayer] = []
+        self.drawings: List[DrawingLayer] = []
+
+    def add_print(self, layer: DigitalCompositionLayer):
+        self.prints.append(layer)
+
+    def add_drawing(self, layer: DrawingLayer):
+        self.drawings.append(layer)
+
+    def compose(self):
+        for print in self.prints:
+            if not print.backside:
+                ...
+            else:
+                ...
+
+        for drawing in self.drawings:
+            if not drawing.backside:
+                ...
+            else:
+                ...
+
+        return ...
+
+    @staticmethod
+    def as_int(opacity):
+        if type(opacity) is float:
+            return np.clip(opacity * 255, 0, 255).astype(np.uint8)
+        else:
+            return np.clip(opacity, 0, 255).astype(np.uint8)
 
 
 class LayeredPaperRenderer:
     def __init__(self, shape=(1000, 1000)):
         self.shape = shape
         self.backside_layer = DigitalCompositionLayer(shape, backside=True)
-        self.background_layer = BackgroundLayer(shape)
+        self.background_layer = SubstrateLayer(shape)
         self.printing_layer = DigitalCompositionLayer(shape)
         self.drawing_layer = DrawingLayer(shape)
 
