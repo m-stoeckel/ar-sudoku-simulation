@@ -52,12 +52,15 @@ class DigitalCompositionLayer(Layer):
             result = self.composite(self.elements[0], self.elements[1])
             for element in self.elements[:2]:
                 result = self.composite(result, element)
-            return result
         elif len(self.elements) == 1:
-            return self.elements[0]
+            result = self.elements[0]
         else:
             shape = (self.shape[0], self.shape[1], 4)
-            return np.empty(shape, dtype=np.uint8)
+            result = np.empty(shape, dtype=np.uint8)
+
+        if self.backside:
+            result = np.fliplr(result)
+        return result
 
 
 class DrawingLayer(Layer):
@@ -68,15 +71,6 @@ class DrawingLayer(Layer):
 class BackgroundLayer(Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-
-class BacksideLayer(DigitalCompositionLayer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def compose(self):
-        result = super().compose()
-        return np.fliplr(result)
 
 
 class LayeredPaperRenderer:
