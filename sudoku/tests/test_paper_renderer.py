@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from sudoku import Color
 from sudoku.render.digital_composition import DigitalCompositionMethod
-from sudoku.render.paper_renderer import DigitalCompositionLayer
+from sudoku.render.layers import DigitalCompositionLayer
 
 
 class Test(TestCase):
