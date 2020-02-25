@@ -101,8 +101,8 @@ class SubstrateLayer(Layer):
         self.drawings.append(layer)
 
     def compose(self):
-        for print in self.prints:
-            if not print.backside:
+        for print_layer in self.prints:
+            if not print_layer.backside:
                 ...
             else:
                 ...
