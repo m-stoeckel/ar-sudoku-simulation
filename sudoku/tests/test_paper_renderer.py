@@ -3,7 +3,6 @@ from unittest import TestCase
 import numpy as np
 from matplotlib import pyplot as plt
 
-from sudoku import Color
 from sudoku.render.digital_composition import DigitalCompositionMethod
 from sudoku.render.layers import DigitalCompositionLayer
 
@@ -45,7 +44,7 @@ class Test(TestCase):
             method = Method()
             fig, axes = plt.subplots(1, 3, figsize=(9, 3.25))
             for ax, color in zip(axes, [green, blue, yellow]):
-                layer = DigitalCompositionLayer((256, 256), composite=method, bg_color=Color.NONE)
+                layer = DigitalCompositionLayer((256, 256), composite=method)
                 layer.add_element(red.copy())
                 layer.add_element(color.copy())
                 ax.axis('off')
