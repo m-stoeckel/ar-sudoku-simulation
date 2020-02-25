@@ -70,9 +70,13 @@ class BackgroundLayer(Layer):
         super().__init__(*args, **kwargs)
 
 
-class BacksideLayer(Layer):
+class BacksideLayer(DigitalCompositionLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def compose(self):
+        result = super().compose()
+        return np.fliplr(result)
 
 
 class LayeredPaperRenderer:
