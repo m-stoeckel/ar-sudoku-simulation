@@ -3,8 +3,10 @@ from unittest import TestCase
 import numpy as np
 from matplotlib import pyplot as plt
 
+from digit.digit_dataset import Chars74KIRGBA
 from sudoku.render.digital_composition import DigitalCompositionMethod
-from sudoku.render.layers import DigitalCompositionLayer
+from sudoku.render.layers import DigitalCompositionLayer, SubstrateLayer
+from sudoku.render.paper_renderer import LayeredPaperRenderer
 
 
 class Test(TestCase):
@@ -52,7 +54,32 @@ class Test(TestCase):
             fig.suptitle(f'{Method.__name__}')
             plt.show()
 
-    # def test_DigitalCompositionLayer(self):
+    def test_printing(self):
+        res = 900
+        substrate = SubstrateLayer(shape=(res, res), background_color=(255, 240, 240, 250))
+
+        renderer = LayeredPaperRenderer(substrate)
+
+        digits = Chars74KIRGBA(digits_path="../../datasets/digits_hnd.zip", resolution=res)
+        print_layer = DigitalCompositionLayer((res, res))
+
+        digit = digits.get_ordered(1, 0)
+        print_layer.add_element(digit)
+        renderer.print_layer = print_layer
+
+        self.plot(digit)
+        img = renderer.render()
+        self.plot(img)
+
+        # def test_DigitalCompositionLayer(self):
+
+    def plot(self, img):
+        plt.figure(figsize=(9, 9))
+        plt.axis('off')
+        plt.tight_layout()
+        plt.imshow(img)
+        plt.show()
+
     #     plt.subplots(4, 4, figsize=(12, 12))
     #     for i, ralpha in enumerate([63, 127, 191, 255]):
     #         for j, balpha in enumerate([63, 127, 191, 255]):

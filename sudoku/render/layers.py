@@ -3,7 +3,6 @@ from typing import List, Tuple, Union
 import cv2
 import numpy as np
 
-from sudoku import Color
 from sudoku.render.colors import uint8_from_number
 from sudoku.render.digital_composition import AlphaComposition
 
@@ -75,7 +74,7 @@ class DrawingLayer(Layer):
 
 
 class SubstrateLayer(Layer):
-    def __init__(self, shape: Tuple[int, int] = None, background_color: Color = None,
+    def __init__(self, shape: Tuple[int, int] = None, background_color: Union[tuple, np.ndarray] = None,
                  background_texture: Union[np.ndarray, str] = None,
                  override_opacity: Union[int, float] = None, print_area=0.98,
                  **kwargs):
@@ -92,7 +91,8 @@ class SubstrateLayer(Layer):
             super().__init__(self.background.shape, **kwargs)
         elif shape is not None and background_color is not None:
             super().__init__(shape, **kwargs)
-            self.background = np.full((self.shape[0], self.shape[1], 4), background_color.value, dtype=np.uint8)
+            self.background = np.zeros((self.shape[0], self.shape[1], 4), dtype=np.uint8)
+            self.background[:, :, :] = background_color
         else:
             raise RuntimeError("Either background_texture OR shape and background_color must be set.")
 

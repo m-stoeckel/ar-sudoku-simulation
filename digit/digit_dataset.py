@@ -99,10 +99,11 @@ class DigitDataset:
 
         self.digit_count = digit_count
         if digits_path.endswith(".zip"):
-            self.digit_path = Path(self.default_digit_path)
-            if not os.path.exists(self.default_digit_path):
+            parent = Path(digits_path).parent
+            self.digit_path = Path(digits_path.rstrip(".zip"))
+            if not os.path.exists(self.digit_path):
                 with zipfile.ZipFile(digits_path) as f_zip:
-                    f_zip.extractall(self.default_digit_parent)
+                    f_zip.extractall(parent)
         else:
             self.digit_path: Path = Path(digits_path)
 
@@ -227,6 +228,26 @@ class Chars74KI(DigitDataset):
         :returns: 2D numpy array of 28x28 pixels
         """
         return self.digits[self.digit_count * (digit - 1) + (index % self.digit_count)]
+
+
+class Chars74KIRGBA(Chars74KI):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _load(self):
+        self.digits = np.empty((9 * self.digit_count, self.res, self.res, 4), dtype=np.uint8)
+        all_digits = []
+        for i in range(1, 10):
+            for file_name in os.listdir(str(self.digit_path / f"{i}")):
+                all_digits.append(self.digit_path / (f"{i}/" + file_name))
+        for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
+            img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
+            img = self._crop(img)
+            shape = img.shape
+            alpha = cv2.bitwise_not(img)
+            img = img.repeat(4).reshape(shape[0], shape[1], 4)
+            img[:, :, 3] = alpha
+            self._add_digit_and_label(i, img)
 
 
 class DigitDataGenerator(keras.utils.Sequence):
