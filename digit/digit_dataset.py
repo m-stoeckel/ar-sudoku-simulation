@@ -121,7 +121,7 @@ class DigitDataset:
 
     def _add_digit_and_label(self, i, img):
         if self.res != img.shape[0]:
-            interpolation = cv2.INTER_AREA if self.res < img.shape[0] else cv2.INTER_CUBIC
+            interpolation = cv2.INTER_LANCZOS4 if self.res < img.shape[0] else cv2.INTER_CUBIC
             self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
         else:
             self.digits[i] = img

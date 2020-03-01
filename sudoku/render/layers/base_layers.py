@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from sudoku.render.util.colors import uint8_from_number
-from sudoku.render.util.digital_composition import AlphaComposition
+from sudoku.render.util.digital_composition import AlphaComposition, GammaCorrectedAlphaComposition
 
 
 class Layer:
@@ -64,20 +64,16 @@ class DigitalCompositionLayer(Layer):
         return len(self.elements)
 
 
-class DrawingLayer(Layer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class DrawingLayer(DigitalCompositionLayer):
+    def __init__(self, *args, composite=GammaCorrectedAlphaComposition(), **kwargs):
+        super().__init__(*args, composite=composite, **kwargs)
         self.elements: List[np.ndarray] = []
-
-    def not_empty(self):
-        return len(self.elements)
 
 
 class SubstrateLayer(Layer):
     def __init__(self, shape: Tuple[int, int] = None, background_color: Union[tuple, np.ndarray] = None,
                  background_texture: Union[np.ndarray, str] = None,
-                 override_opacity: Union[int, float] = None, print_area=0.98,
-                 **kwargs):
+                 override_opacity: Union[int, float] = None, **kwargs):
         if background_texture is not None:
             if isinstance(background_texture, np.ndarray):
                 self.background = background_texture
