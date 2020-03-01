@@ -56,18 +56,17 @@ class Test(TestCase):
 
     def test_printing(self):
         res = 900
-        substrate = SubstrateLayer(shape=(res, res), background_color=(255, 240, 240, 250))
+        substrate = SubstrateLayer(shape=(res, res), background_color=(255, 240, 240, int(0.8 * 255)))
 
         renderer = LayeredPaperRenderer(substrate)
 
-        digits = Chars74KIRGBA(digits_path="../../datasets/digits_hnd.zip", resolution=res)
-        print_layer = DigitalCompositionLayer((res, res))
+        digits = Chars74KIRGBA(digits_path="../datasets/digits_hnd.zip", resolution=res)
 
         digit = digits.get_ordered(1, 0)
-        print_layer.add_element(digit)
-        renderer.print_layer = print_layer
+        renderer.drawing_layer.add_element(digit)
 
-        self.plot(digit)
+        digit = digits.get_ordered(9, 0)
+        renderer.backside_drawing_layer.add_element(digit)
 
         img = renderer.render()
         self.plot(img)
