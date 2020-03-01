@@ -4,14 +4,16 @@ import cv2
 import numpy as np
 
 from digit.digit_dataset import MNIST, plt, DigitDataset
-from sudoku.render.colors import Color
+from sudoku.render.layers.base_layers import DigitalCompositionLayer
+from sudoku.render.util.colors import Color
 
 DEBUG = True
 
 
-class SudokuRenderer:
-    def __init__(self):
-        pass
+@DeprecationWarning
+class SudokuLayer(DigitalCompositionLayer):
+    def __init__(self, shape: tuple, **kwargs):
+        super().__init__(shape, **kwargs)
 
     @staticmethod
     def get_sudoku_grid(cell_size=28, major_line_width=2, minor_line_width=1):
@@ -39,7 +41,7 @@ class SudokuRenderer:
     def draw_sudoku_pil(sudoku, masking_rate=0.7):
         mask = np.random.choice([True, False], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])
 
-        grid_image, coords = SudokuRenderer.get_sudoku_grid()
+        grid_image, coords = SudokuLayer.get_sudoku_grid()
 
         x_offset = 5
         y_offset = 4
@@ -65,7 +67,7 @@ class SudokuRenderer:
         mnist_digit_mask[printed_digit_mask] = False
 
         # Image data setup
-        grid_image, coords = SudokuRenderer.get_sudoku_grid(cell_size=cell_size)
+        grid_image, coords = SudokuLayer.get_sudoku_grid(cell_size=cell_size)
         mnist_image = np.zeros(grid_image.shape, dtype=np.uint8)
 
         # Drawing
@@ -88,13 +90,13 @@ class SudokuRenderer:
                     mnist_digit = mnist_digit.repeat(4).reshape((cell_size, cell_size, 4))
                     mnist_digit = cv2.bitwise_not(mnist_digit)
 
-                    mask = SudokuRenderer.get_bool_mask_from_color(mnist_digit)
+                    mask = SudokuLayer.get_bool_mask_from_color(mnist_digit)
                     mnist_digit[:, :, 3] = 0
                     mnist_digit[mask, 3] = 255
                     mnist_image[y_coord:y_coord + cell_size, x_coord:x_coord + cell_size] = mnist_digit
 
         # Image composition
-        img = SudokuRenderer.composite_threshold(grid_image, mnist_image)
+        img = SudokuLayer.composite_threshold(grid_image, mnist_image)
         if DEBUG:
             plt.figure(figsize=(3, 3))
             plt.imshow(img)
@@ -104,12 +106,12 @@ class SudokuRenderer:
 
     @staticmethod
     def composite_threshold(background, foreground, reset_alpha=True):
-        mask = SudokuRenderer.get_mask_from_alpha(foreground)
+        mask = SudokuLayer.get_mask_from_alpha(foreground)
         img = cv2.bitwise_and(background, background, mask=mask)
         img = cv2.add(img, foreground)
         if reset_alpha:
             img[:, :, 3] = 0
-            img[SudokuRenderer.get_bool_mask_from_alpha(img), 3] = 255
+            img[SudokuLayer.get_bool_mask_from_alpha(img), 3] = 255
         return img
 
     @staticmethod
@@ -119,11 +121,11 @@ class SudokuRenderer:
 
     @staticmethod
     def get_bool_mask_from_alpha(image):
-        return SudokuRenderer.get_mask_from_alpha(image).astype(np.bool)
+        return SudokuLayer.get_mask_from_alpha(image).astype(np.bool)
 
     @staticmethod
     def get_mask_from_color(image):
-        mask = SudokuRenderer.get_bool_mask_from_color(image)
+        mask = SudokuLayer.get_bool_mask_from_color(image)
         ret = np.zeros_like(mask, 0, dtype=np.uint8)
         ret[mask] = 255
         return ret

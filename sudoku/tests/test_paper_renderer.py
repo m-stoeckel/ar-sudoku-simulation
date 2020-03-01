@@ -4,9 +4,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from digit.digit_dataset import Chars74KIRGBA
-from sudoku.render.digital_composition import DigitalCompositionMethod
-from sudoku.render.layers import DigitalCompositionLayer, SubstrateLayer
-from sudoku.render.paper_renderer import LayeredPaperRenderer
+from sudoku.render.layers.base_layers import DigitalCompositionLayer, SubstrateLayer
+from sudoku.render.renderer import LayeredPaperRenderer
+from sudoku.render.util.digital_composition import DigitalCompositionMethod
 
 
 class Test(TestCase):
@@ -68,6 +68,7 @@ class Test(TestCase):
         renderer.print_layer = print_layer
 
         self.plot(digit)
+
         img = renderer.render()
         self.plot(img)
 

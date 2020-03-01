@@ -1,13 +1,12 @@
 import cv2
 import numpy as np
-from PIL import Image
 
 from digit.digit_dataset import Chars74KI
-from sudoku.render.sudoku_renderer import SudokuRenderer
+from sudoku.render.layers.sudoku_layer import SudokuRenderer
 from sudoku.sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
 
 
-def save_img(img: Image, name: str):
+def save_img(img: np.ndarray, name: str):
     cv2.imwrite(name, img)
 
 

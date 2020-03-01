@@ -3,8 +3,8 @@ from typing import List, Tuple, Union
 import cv2
 import numpy as np
 
-from sudoku.render.colors import uint8_from_number
-from sudoku.render.digital_composition import AlphaComposition
+from sudoku.render.util.colors import uint8_from_number
+from sudoku.render.util.digital_composition import AlphaComposition
 
 
 class Layer:
