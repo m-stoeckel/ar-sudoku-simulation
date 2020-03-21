@@ -4,14 +4,14 @@ from typing import Union, Tuple
 import cv2
 import numpy as np
 from PIL import ImageFont, ImageDraw, Image
-from tqdm import tqdm
+from p_tqdm import p_map
 
 from digit.fonts import Font
 from sudoku import Color
 
 
 class CharacterRenderer:
-    char_list = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÄÜÖabcdefghijklmnopqrstuvwxyzäüöß")
+    char_list = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÄÜÖabcdefghijklmnopqrstuvwxyzäüöß,.-!(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
         self.render_resolution = get_resolution(render_resolution)
@@ -20,26 +20,27 @@ class CharacterRenderer:
         char_img = Image.new('RGBA', self.render_resolution)
         draw = ImageDraw.Draw(char_img)
         w, h = draw.textsize(char, font=font)
-        draw.text((int((self.render_resolution[0] - w) / 2), int(self.render_resolution[1] - h) / 2), char, font=font,
-                  fill=Color.BLACK.value, stroke_fill=Color.BLACK.value)
+        draw.text((int((self.render_resolution[0] - w) / 2), int(self.render_resolution[1] - h) / 2), char,
+                  font=font, fill=Color.BLACK.value, stroke_fill=Color.BLACK.value)
         char_img = np.array(char_img)
         return char_img
 
     def prerender_all(self):
-        t = tqdm(Font, position=0, desc="Rendering fonts")
         character_dir = Path("../datasets/characters/")
         character_dir.mkdir(exist_ok=True)
-        for font in t:
-            t.set_postfix_str(f"{font.name}")
+
+        def _prerender_font(font):
             output_dir = character_dir / font.name
             output_dir.mkdir(exist_ok=True)
 
-            # choose font size as 90% of the entire image area
-            font_size_pt = int((self.render_resolution[0] * 0.9) / 1.3)
+            # Choose fontsize from resolution
+            font_size_pt = int(self.render_resolution[1] / 1.3)
             font = ImageFont.truetype(font.value, font_size_pt)
             for char in self.char_list:
                 char_img = self.render_character(char, font)
-                cv2.imwrite(str(output_dir / f"{char}.png"), char_img)
+                cv2.imwrite(str(output_dir / f"{ord(char)}.png"), char_img)
+
+        p_map(_prerender_font, list(Font), desc="Rendering fonts")
 
 
 class SingleFontCharacterRenderer(CharacterRenderer):
@@ -50,7 +51,7 @@ class SingleFontCharacterRenderer(CharacterRenderer):
         self.lookup = []
 
         # choose font size as 90% of the entire image area
-        font_size_pt = int((self.render_resolution[0] * 0.9) / 1.3)
+        font_size_pt = int(self.render_resolution[1] / 1.3)
         font = ImageFont.truetype(font.value, font_size_pt)
         for char in self.char_list:
             char_img = self.render_character(char, font)
