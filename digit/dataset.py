@@ -8,7 +8,6 @@ from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
 from tqdm import tqdm, trange
 
-from digit.data_generator import test_generator
 from image.image_transforms import *
 from image.image_transforms import ImageTransform
 
