@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from digit.digit_dataset import Chars74KI
+from digit.dataset import Chars74KI
 from sudoku.render.layers.sudoku_layer import SudokuRenderer
 from sudoku.sudoku_permutation import PermutationSudokuGenerator, MajorSwitch
 

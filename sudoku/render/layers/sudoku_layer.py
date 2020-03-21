@@ -3,7 +3,7 @@ from typing import Union
 import cv2
 import numpy as np
 
-from digit.digit_dataset import MNIST, plt, CuratedCharactersDataset
+from digit.dataset import MNIST, plt, CuratedCharactersDataset
 from sudoku.render.layers.base_layers import DigitalCompositionLayer
 from sudoku.render.util.colors import Color
 

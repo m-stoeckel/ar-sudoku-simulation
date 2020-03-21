@@ -1,2 +1,2 @@
-from .digit_dataset import MNIST, FilteredMNIST, CuratedCharactersDataset, DigitDataGenerator, \
-    BalancedDataGenerator
+from .dataset import MNIST, FilteredMNIST, CuratedCharactersDataset
+from .data_generator import DigitDataGenerator, BalancedDataGenerator

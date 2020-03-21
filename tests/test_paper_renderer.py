@@ -3,7 +3,7 @@ from unittest import TestCase
 import numpy as np
 from matplotlib import pyplot as plt
 
-from digit.digit_dataset import Chars74KIRGBA
+from digit.dataset import Chars74KIRGBA
 from sudoku.render.layers.base_layers import DigitalCompositionLayer, SubstrateLayer
 from sudoku.render.renderer import LayeredPaperRenderer
 from sudoku.render.util.digital_composition import DigitalCompositionMethod
