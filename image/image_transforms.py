@@ -3,8 +3,6 @@ from typing import Union
 import cv2
 import numpy as np
 
-from tests.test_image_transforms import test, transform_sudoku, generate_composition
-
 
 class ImageTransform:
     def apply(self, img: np.ndarray) -> np.ndarray:
@@ -135,9 +133,3 @@ class LensDistortion(ImageTransform):
         camera_matrix = np.array([[self.f[0], 0, c[0]], [0, self.f[1], c[1]], [0, 0, 1]])
         img = cv2.undistort(img, camera_matrix, self.dist_coeffs)
         return img
-
-
-if __name__ == '__main__':
-    test()
-    generate_composition()
-    transform_sudoku()

@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from image.image_transforms import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
+from image import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
 
 
 class Test(TestCase):

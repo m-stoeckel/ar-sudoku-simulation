@@ -8,7 +8,7 @@ from sudoku.render.util.digital_composition import AlphaComposition
 
 
 class LayeredPaperRenderer:
-    def __init__(self, substrate_layer: SubstrateLayer, shape=(1000, 1000), print_area=0.98):
+    def __init__(self, substrate_layer: SubstrateLayer, shape=(1000, 1000), print_area=0.99):
         self.shape = shape
         self.print_area = np.clip(print_area, 0.0, 1.0)
 
