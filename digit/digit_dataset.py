@@ -1,32 +1,192 @@
 import os
+import tarfile
 import zipfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import keras
+from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
-from tqdm import trange, tqdm
+from tqdm import tqdm, trange
 
 from image.image_transforms import *
+from image.image_transforms import ImageTransform
+
+INTER_DOWN_HIGH = cv2.INTER_LANCZOS4
+INTER_DOWN_FAST = cv2.INTER_NEAREST
+INTER_UP_HIGH = cv2.INTER_CUBIC
+INTER_UP_FAST = cv2.INTER_AREA
 
 DEBUG = False
+# Classmap: {0: OUT, 0..9: #_MACHINE, 10: EMPTY, 11..19: #_HAND}
+CLASS_OUT = 0
+CLASS_EMPTY = 10
 
 
-class MNIST:
+def strip_file_ext(path: str):
+    extension = None
+    for ext in [".zip", ".tar", ".tar.gz"]:
+        if path.endswith(ext):
+            extension = ext
+    if extension:
+        return "".join(list(path)[0:-len(extension)])
+    else:
+        return path
+
+
+def char_is_valid_number(char: Union[int, str]):
+    if isinstance(char, str):
+        char = ord(char)
+    return char in [ord(c) for c in '123456789']
+
+
+class CharacterDataset:
+    _digit_offset = 0
+
+    def __init__(
+            self,
+            resolution,
+            shuffle=True,
+            fast_resize=False
+    ):
+        self.res = resolution
+        self.shuffle = shuffle
+        self.inter_down = INTER_DOWN_FAST if fast_resize else INTER_DOWN_HIGH
+        self.inter_up = INTER_UP_FAST if fast_resize else INTER_UP_HIGH
+
+        self.train_x: np.ndarray = np.empty(0, dtype=np.uint8)
+        self.train_y: np.ndarray = np.empty(0, dtype=int)
+        self.test_x: np.ndarray = np.empty(0, dtype=np.uint8)
+        self.test_y: np.ndarray = np.empty(0, dtype=int)
+
+        self.train_indices_by_number: List[np.ndarray] = [np.empty(0, dtype=int)]
+        self.test_indices_by_number: List[np.ndarray] = [np.empty(0, dtype=int)]
+
+        self.transforms: List[List[ImageTransform]] = list()
+
+        self._load()
+
+    def _get_label(self, id: Union[int, str]):
+        if char_is_valid_number(id):
+            return int(chr(id)) + self._digit_offset
+        else:
+            return CLASS_OUT
+
+    def add_transforms(self, *transforms: ImageTransform):
+        """
+        Add a transform or a list of sequential transforms to this generator.
+
+        :param transforms: Single ImageTransform or list of sequential ImageTransform
+        :return: None
+        """
+        transforms = list(transforms)
+        self.transforms.append(transforms)
+
+    def apply_transforms(self, keep=True):
+        if not self.transforms:
+            return
+        n_train = self.train_x.shape[0]
+        n_test = self.test_x.shape[0]
+        n_transforms = len(self.transforms)
+        new_train_shape = self.train_x.shape * np.array([int(keep) + n_transforms, 1, 1])
+        new_test_shape = self.test_x.shape * np.array([int(keep) + n_transforms, 1, 1])
+
+        # apply transforms to train and test data
+        new_train_x = np.empty(new_train_shape, dtype=np.uint8)
+        new_test_x = np.empty(new_test_shape, dtype=np.uint8)
+        if keep:
+            new_train_x[:n_train] = self.train_x
+            new_test_x[:n_test] = self.test_x
+        for i, transforms in enumerate(self.transforms, start=int(keep)):
+            for j in range(n_train):
+                img = self.train_x[j]
+                for transform in transforms:
+                    img = transform.apply(img)
+                new_train_x[n_train * i + j] = img
+            for j in range(n_test):
+                img = self.test_x[j]
+                for transform in transforms:
+                    img = transform.apply(img)
+                new_test_x[n_test * i + j] = img
+
+        # duplicate labels
+        self.train_y = np.tile(self.train_y, int(keep) + n_transforms)
+        self.test_y = np.tile(self.test_y, int(keep) + n_transforms)
+
+    def __len__(self):
+        return self.train_x.shape[0]
+
+    def __getitem__(self, item):
+        return self.train_x[item]
+
+    def _load(self):
+        pass
+
+    def resize(self, res=28):
+        self.train_x = self._get_resized(self.train_x, res)
+        self.test_x = self._get_resized(self.test_x, res)
+
+    def _get_resized(self, data, resolution):
+        inter_down = self.inter_down
+        inter_up = self.inter_up
+
+        def rsz(img):
+            if resolution != img.shape[0]:
+                interpolation = inter_down if resolution < img.shape[0] else inter_up
+                img = cv2.resize(img, (resolution, resolution), interpolation=interpolation)
+            return img
+
+        num_digits = data.shape[0]
+        new_digits = np.empty((num_digits, resolution, resolution))
+        resized_images = p_map(rsz, [data[i] for i in range(num_digits)],
+                               desc="Resizing images",
+                               num_cpus=os.cpu_count())
+        for i, img in enumerate(resized_images):
+            new_digits[i, :, :] = img
+
+        return new_digits
+
+    def _split(self, digits, labels):
+        """
+        Split the dataset into train and validation splits.
+
+        :param digits: An array of images
+        :param labels: An array of labels
+        """
+        all_count = digits.shape[0]
+        train_count = int(all_count * 0.9)
+        indices = np.arange(all_count)
+        if self.shuffle:
+            np.random.shuffle(indices)
+        self.train_x = digits[indices[:train_count]]
+        self.train_y = labels[indices[:train_count]]
+        self.test_x = digits[indices[train_count:]]
+        self.test_y = labels[indices[train_count:]]
+
+
+class MNIST(CharacterDataset):
+
     def __init__(self, shuffle=True):
+        super().__init__(28, shuffle)
+
+    def _load(self):
         print("Loading MNIST dataset")
         # Load data from https://www.openml.org/d/554
         os.makedirs('datasets/', exist_ok=True)
+
         x, y = fetch_openml('mnist_784', version=1, return_X_y=True, data_home="datasets/", cache=True)
         x = np.array(x, dtype=np.uint8).reshape((70000, 28, 28))
         y = np.array(y, dtype=int)
+
         indices = np.arange(70000)
-        if shuffle:
+        if self.shuffle:
             np.random.shuffle(indices)
+
         self.train_x = x[indices[:60000]]
         self.train_y = y[indices[:60000]]
         self.test_x = x[indices[60000:]]
         self.test_y = y[indices[60000:]]
+
         self.train_indices_by_number = [np.flatnonzero(self.train_y == i) for i in range(0, 10)]
         self.test_indices_by_number = [np.flatnonzero(self.test_y == i) for i in range(0, 10)]
         del x, y
@@ -50,19 +210,20 @@ class MNIST:
     @property
     def train(self):
         """
-        Returns the random train split (60.000 samples) of the MNIST dataset.
+        Returns the random train split (60.000 samples by default) of the MNIST dataset.
         """
         return (self.train_x, self.train_y)
 
     @property
     def test(self):
         """
-        Returns the random test split (10.000 samples) of the MNIST dataset.
+        Returns the random test split (10.000 samples by default) of the MNIST dataset.
         """
         return (self.test_x, self.test_y)
 
 
 class FilteredMNIST(MNIST):
+
     def __init__(self):
         super().__init__()
         filtered = self.train_y > 0
@@ -89,11 +250,101 @@ class FilteredMNIST(MNIST):
         return self.train_x[np.random.choice(self.train_indices_by_number[digit - 1])]
 
 
-class DigitDataset:
+class ClassSeparateMNIST(MNIST):
+
+    def __init__(self):
+        super().__init__()
+        zeros = self.train_y == 0
+        self.train_y[zeros] = CLASS_OUT
+        zeros = self.test_y == 0
+        self.test_y[zeros] = CLASS_OUT
+
+        filtered = self.train_y > 0
+        self.train_y[filtered] += 10
+        filtered = self.test_y > 0
+        self.test_y[filtered] += 10
+
+
+class CuratedCharactersDataset(CharacterDataset):
+    _default_digit_archive_path = "datasets/curated.tar.gz"
+    _default_digit_parent_path = "datasets/"
+    _default_digit_path = "datasets/curated/"
+
+    def __init__(
+            self,
+            digits_path=_default_digit_archive_path,
+            resolution=64,
+            load_chars=None,
+            **kwargs
+    ):
+        # If no specific list of characters is given, load all by default
+        if load_chars is None:
+            self.load_chars = list(range(33, 92))
+            # Skip char 92 ('\') as it is not in the dataset
+            self.load_chars.extend(list(range(93, 127)))
+            # load_chars = [ord(c) for c in '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ']
+        else:
+            self.load_chars = load_chars
+        if not os.path.exists(digits_path):
+            raise FileNotFoundError(digits_path)
+
+        # Extract the dataset if is compressed
+        if digits_path.endswith((".zip", ".tar", ".tar.gz")):
+            self.digit_path = Path(strip_file_ext(digits_path))
+            parent = Path(digits_path).parent
+            if not os.path.exists(self.digit_path):
+                if digits_path.endswith(".zip"):
+                    f_archive = zipfile.ZipFile(digits_path)
+                else:
+                    f_archive = tarfile.TarFile(digits_path)
+                f_archive.extractall(parent)
+                f_archive.close()
+        else:
+            self.digit_path: Path = Path(digits_path)
+
+        # Construct a map of all character paths and their respective label
+        self.file_map = {}
+        for char in self.load_chars:
+            files = os.listdir(self.digit_path / str(char))
+            for file in files:
+                label = self._get_label(char)
+                self.file_map.update({str(self.digit_path / str(char) / file): label})
+
+        super().__init__(resolution, **kwargs)
+
+    def _load(self):
+        """
+        Load the Curated Handwritten Character dataset.
+        """
+        char_count = len(self.file_map)
+
+        digits = np.empty((char_count, self.res, self.res), dtype=np.uint8)
+        labels = np.empty(char_count, dtype=int)
+
+        for i, (path, label) in tqdm(enumerate(self.file_map.items()), total=char_count, desc="Loading images"):
+            img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+            if self.res != img.shape[0]:
+                interpolation = cv2.INTER_LANCZOS4 if self.res < img.shape[0] else cv2.INTER_CUBIC
+                digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
+            else:
+                digits[i] = img
+            labels[i] = label
+
+        self._split(digits, labels)
+
+
+class ClassSeparateCuratedCharactersDataset(CuratedCharactersDataset):
+    """
+    A variant of the CuratedCharactersDataset which assigns the classes 11-19 to digits.
+    """
+    _digit_offset = 10
+
+
+class PrerenderedDigitDataset(CharacterDataset):
     default_digit_parent = "datasets/"
     default_digit_path = "datasets/digits/"
 
-    def __init__(self, digits_path="datasets/digits.zip", resolution=28, digit_count=915):
+    def __init__(self, digits_path="datasets/digits.zip", resolution=128, digit_count=915):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
@@ -107,156 +358,43 @@ class DigitDataset:
         else:
             self.digit_path: Path = Path(digits_path)
 
-        self.transforms: List[List[ImageTransform]] = list()
-        self.res = resolution
-        self.digits = np.empty((9 * self.digit_count, self.res, self.res), dtype=np.uint8)
-        self.labels = np.empty(9 * self.digit_count, dtype=int)
-        self._load()
+        super().__init__(resolution)
 
     def _load(self):
-        for i in trange(9 * self.digit_count, desc="Loading images"):
+        digit_count = 9 * self.digit_count
+        digits = np.empty((digit_count, self.res, self.res), dtype=np.uint8)
+        labels = np.empty(digit_count, dtype=int)
+
+        for i in trange(digit_count, desc="Loading images"):
             digit_path = self.digit_path / f"{i}.png"
             img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
-            self._add_digit_and_label(i, img)
+            if self.res != img.shape[0]:
+                interpolation = cv2.INTER_LANCZOS4 if self.res < img.shape[0] else cv2.INTER_CUBIC
+                digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
+            else:
+                digits[i] = img
+            labels[i] = np.floor(i / self.digit_count)
 
-    def _add_digit_and_label(self, i, img):
-        if self.res != img.shape[0]:
-            interpolation = cv2.INTER_LANCZOS4 if self.res < img.shape[0] else cv2.INTER_CUBIC
-            self.digits[i] = cv2.resize(img, (self.res, self.res), interpolation=interpolation)
-        else:
-            self.digits[i] = img
-        self.labels[i] = np.floor(i / self.digit_count)
-
-    def add_transforms(self, *transforms: ImageTransform):
-        """
-        Add a transform or a list of sequential transforms to this generator.
-
-        :param transforms: Single ImageTransform or list of sequential ImageTransform
-        :return: None
-        """
-        transforms = list(transforms)
-        self.transforms.append(transforms)
-
-    def apply_transforms(self, keep=True):
-        if not self.transforms:
-            return
-        o_digits = self.digits
-        n_digits = o_digits.shape[0]
-        n_transforms = len(self.transforms)
-        new_shape = o_digits.shape * np.array([int(keep) + n_transforms, 1, 1])
-        self.digits = np.empty(new_shape, dtype=np.uint8)
-        if keep:
-            self.digits[:n_digits] = o_digits
-        for i, transforms in enumerate(self.transforms, start=int(keep)):
-            for j in range(n_digits):
-                img = o_digits[j]
-                for transform in transforms:
-                    img = transform.apply(img)
-                self.digits[n_digits * i + j] = img
-        self.labels = np.tile(self.labels, int(keep) + n_transforms)
-
-    def __len__(self):
-        return self.digits.shape[0]
-
-    def __getitem__(self, item):
-        return self.digits[item]
-
-
-def plot_img(img, figsize=(4, 3)):
-    plt.figure(figsize=figsize)
-    plt.imshow(img, cmap='gray')
-    plt.axis('off')
-    plt.show()
-
-
-class Chars74KI(DigitDataset):
-    """
-    Class for the handwritten numbers part of the Chars74KI "EnglishHnd" dataset.
-    :source: http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/
-    """
-
-    default_digit_path = "datasets/digits_hnd/"
-
-    def __init__(self, digits_path="datasets/digits_hnd.zip", resolution=28, digit_count=55):
-        super().__init__(digits_path=digits_path, resolution=resolution, digit_count=digit_count)
-
-    def _load(self):
-        all_digits = []
-        for i in range(1, 10):
-            for file_name in os.listdir(str(self.digit_path / f"{i}")):
-                all_digits.append(self.digit_path / (f"{i}/" + file_name))
-        for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
-            img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
-            img = self._crop(img)
-            img = cv2.bitwise_not(img)
-            self._add_digit_and_label(i, img)
-
-    def _crop(self, img):
-        """
-        Crop off the image side which is empty. Crop to the center if both sides are empty or both sides contain part
-        of the digit.
-        """
-        if np.any(img[:, :300] == 0) == np.any(img[:, 900:] == 0):
-            if DEBUG:
-                img[:, :150] = 128
-                img[:, 1050:] = 128
-                plot_img(img)
-            return img[:, 150:1050]
-        elif np.any(img[:, :300] == 0):
-            if DEBUG:
-                img[:, 900:] = 128
-                plot_img(img)
-            return img[:, :900]
-        else:
-            if DEBUG:
-                img[:, :300] = 128
-                plot_img(img)
-            return img[:, 300:]
-
-    def get_random(self, digit: int) -> np.ndarray:
-        """
-        Get a random sample of the given digit.
-
-        :returns: 2D numpy array of 28x28 pixels
-        """
-        return self.digits[np.random.randint(self.digit_count * (digit - 1), self.digit_count * digit)]
-
-    def get_ordered(self, digit: int, index: int) -> np.ndarray:
-        """
-        Get a random sample of the given digit.
-
-        :returns: 2D numpy array of 28x28 pixels
-        """
-        return self.digits[self.digit_count * (digit - 1) + (index % self.digit_count)]
-
-
-class Chars74KIRGBA(Chars74KI):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def _load(self):
-        self.digits = np.empty((9 * self.digit_count, self.res, self.res, 4), dtype=np.uint8)
-        all_digits = []
-        for i in range(1, 10):
-            for file_name in os.listdir(str(self.digit_path / f"{i}")):
-                all_digits.append(self.digit_path / (f"{i}/" + file_name))
-        for i, digit_path in enumerate(tqdm(all_digits, desc="Loading images")):
-            img = cv2.imread(str(digit_path), cv2.IMREAD_GRAYSCALE)
-            img = self._crop(img)
-            shape = img.shape
-            alpha = cv2.bitwise_not(img)
-            img = img.repeat(4).reshape(shape[0], shape[1], 4)
-            img[:, :, 3] = alpha
-            self._add_digit_and_label(i, img)
+        self._split(digits, labels)
 
 
 class DigitDataGenerator(keras.utils.Sequence):
-    def __init__(self, dataset: DigitDataset, batch_size=32, shuffle=True, **kwargs):
+
+    def __init__(
+            self,
+            dataset: CharacterDataset,
+            batch_size=32,
+            shuffle=True,
+            **kwargs
+    ):
         """Initialization"""
         self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.on_epoch_end()
+
+        self.indices = np.arange(len(self.dataset))
+        if self.shuffle:
+            np.random.shuffle(self.indices)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -281,28 +419,31 @@ class DigitDataGenerator(keras.utils.Sequence):
 
     def __data_generation(self, indices):
         """Generates data containing batch_size samples"""
-        x = self.dataset.digits[indices]
-        y = self.dataset.labels[indices]
+        x = self.dataset.train_x[indices]
+        y = self.dataset.train_y[indices]
 
         return x, keras.utils.to_categorical(y, num_classes=9)
 
 
-class BalancedMnistDigitDataGenerator(DigitDataGenerator):
-    def __init__(self, dataset: DigitDataset, mnist_data: Tuple[np.ndarray, np.ndarray], batch_size=32, shuffle=True,
-                 separate_mnist=True, flatten=False, **kwargs):
-        self.mnist_x = mnist_data[0]
-        self.mnist_y = mnist_data[1]
-        self.separate_mnist = separate_mnist
-        self.mnist_classes = len(np.unique(self.mnist_y))
-
-        # Number of classes is 9 if separate_mnist is False,
-        # 18 if separate_mnist is True and the MNIST dataset was zero-filtered
-        # and 19 otherwise. In any case, the MNIST classes are LAST in the label order.
-        self.num_classes = 9 + self.mnist_classes if self.separate_mnist else 9
+class BalancedDigitDataGenerator(DigitDataGenerator):
+    def __init__(
+            self, dataset: CharacterDataset,
+            mnist: MNIST,
+            batch_size=32,
+            shuffle=True,
+            flatten=False,
+            **kwargs
+    ):
+        self.mnist = mnist
+        self.num_classes = 20
 
         self.flatten = flatten
 
         super().__init__(dataset, batch_size, shuffle, **kwargs)
+
+        self.mnist_indices = np.arange(len(self.mnist.train_y))
+        if self.shuffle:
+            np.random.shuffle(self.mnist_indices)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -339,7 +480,7 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
 
     def on_epoch_end(self):
         super().on_epoch_end()
-        self.mnist_indices = np.arange(len(self.mnist_y))
+        self.mnist_indices = np.arange(len(self.mnist.train_y))
         if self.shuffle:
             np.random.shuffle(self.mnist_indices)
 
@@ -349,8 +490,8 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.dataset.digits[indices]
-        y = self.dataset.labels[indices]
+        X = self.dataset.train_x[indices]
+        y = self.dataset.train_y[indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
@@ -360,8 +501,8 @@ class BalancedMnistDigitDataGenerator(DigitDataGenerator):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.mnist_x[indices]
-        y = self.mnist_y[indices] + (self.mnist_classes if self.separate_mnist else 0)
+        X = self.mnist.train_x[indices]
+        y = self.mnist.train_y[indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
@@ -385,18 +526,22 @@ def generate_composition():
 
 
 def test_generator():
-    dataset = DigitDataset(resolution=28)
+    # dataset = CuratedCharactersDataset(digits_path="../datasets/curated/")
+    # dataset.add_transforms(RandomPerspectiveTransform())
+    # dataset.apply_transforms(keep=False)
+    # dataset.resize(28)
+    dataset = PrerenderedDigitDataset(digits_path="../datasets/digits/")
     dataset.add_transforms(RandomPerspectiveTransform())
     # dataset.add_transforms(RandomPerspectiveTransformX())
     # dataset.add_transforms(RandomPerspectiveTransformY())
     dataset.apply_transforms(keep=False)
-    mnist = FilteredMNIST()
-    d = BalancedMnistDigitDataGenerator(dataset, (mnist.train_x, mnist.train_y),
-                                        batch_size=8, shuffle=True, resolution=28)
+    dataset.resize(28)
+    mnist = ClassSeparateMNIST()
+    d = BalancedDigitDataGenerator(dataset, mnist, batch_size=8, shuffle=True, resolution=28)
     img_l = []
     for i in range(8):
         X, y = d[i]
-        img_l.append(np.hstack([img for img in X]))
+        img_l.append(np.hstack([img for img in X.squeeze()]))
     plt.imshow(np.vstack(img_l), cmap="gray")
     plt.axis('off')
     plt.show()

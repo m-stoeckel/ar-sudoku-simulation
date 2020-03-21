@@ -3,7 +3,7 @@ import tensorflow as tf
 from keras import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 
-from digit.digit_dataset import BalancedMnistDigitDataGenerator, DigitDataset, RandomPerspectiveTransform, \
+from digit.digit_dataset import BalancedDigitDataGenerator, CuratedCharactersDataset, RandomPerspectiveTransform, \
     RandomPerspectiveTransformY, FilteredMNIST, MNIST, np
 from image.image_transforms import GaussianNoise, GaussianBlur
 
@@ -47,7 +47,7 @@ def train_linear():
     print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
 
     # Crate large training dataset
-    train_digit_dataset = DigitDataset()
+    train_digit_dataset = CuratedCharactersDataset()
     train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.2))
     train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.25))
     train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.333))
@@ -55,17 +55,17 @@ def train_linear():
     train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.25))
     train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.333))
     train_digit_dataset.apply_transforms(keep=False)
-    print(train_digit_dataset.digits.shape)
-    train_generator = BalancedMnistDigitDataGenerator(train_digit_dataset, mnist_dataset.train,
-                                                      batch_size=batch_size, flatten=True)
+    print(train_digit_dataset.train_x.shape)
+    train_generator = BalancedDigitDataGenerator(train_digit_dataset, mnist_dataset.train,
+                                                 batch_size=batch_size, flatten=True)
 
     # Create separate, small validation dataset
-    test_digit_dataset = DigitDataset()
+    test_digit_dataset = CuratedCharactersDataset()
     test_digit_dataset.add_transforms(RandomPerspectiveTransform())
     test_digit_dataset.apply_transforms(keep=True)
-    print(test_digit_dataset.digits.shape)
-    test_generator = BalancedMnistDigitDataGenerator(test_digit_dataset, mnist_dataset.test,
-                                                     batch_size=batch_size, flatten=True)
+    print(test_digit_dataset.train_x.shape)
+    test_generator = BalancedDigitDataGenerator(test_digit_dataset, mnist_dataset.test,
+                                                batch_size=batch_size, flatten=True)
 
     assert train_generator.num_classes == test_generator.num_classes
 
@@ -100,7 +100,7 @@ def train_cnn():
     print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
 
     # Crate large training dataset
-    train_digit_dataset = DigitDataset()
+    train_digit_dataset = CuratedCharactersDataset()
     train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.1), GaussianBlur())
     train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.15), GaussianBlur())
     train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(0.2), GaussianBlur())
@@ -108,17 +108,17 @@ def train_cnn():
     train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransformY(0.15), GaussianBlur())
     train_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransformY(0.2), GaussianBlur())
     train_digit_dataset.apply_transforms(keep=False)
-    print(train_digit_dataset.digits.shape)
-    train_generator = BalancedMnistDigitDataGenerator(train_digit_dataset, mnist_dataset.train, batch_size=batch_size)
+    print(train_digit_dataset.train_x.shape)
+    train_generator = BalancedDigitDataGenerator(train_digit_dataset, mnist_dataset.train, batch_size=batch_size)
 
     # Create separate, small validation dataset
-    test_digit_dataset = DigitDataset()
+    test_digit_dataset = CuratedCharactersDataset()
     test_digit_dataset.add_transforms(GaussianNoise(sigma=4), GaussianBlur())
     test_digit_dataset.add_transforms(GaussianNoise(sigma=4), RandomPerspectiveTransform(), GaussianBlur())
     test_digit_dataset.add_transforms(GaussianNoise(), RandomPerspectiveTransform(), GaussianBlur())
     test_digit_dataset.apply_transforms(keep=False)
-    print(test_digit_dataset.digits.shape)
-    test_generator = BalancedMnistDigitDataGenerator(test_digit_dataset, mnist_dataset.test, batch_size=batch_size)
+    print(test_digit_dataset.train_x.shape)
+    test_generator = BalancedDigitDataGenerator(test_digit_dataset, mnist_dataset.test, batch_size=batch_size)
 
     assert train_generator.num_classes == test_generator.num_classes
 
