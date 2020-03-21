@@ -3,7 +3,7 @@ from unittest import TestCase
 import numpy as np
 from matplotlib import pyplot as plt
 
-from digit.dataset import Chars74KIRGBA
+from digit.dataset import CuratedCharactersDataset
 from sudoku.render.layers.base_layers import DigitalCompositionLayer, SubstrateLayer
 from sudoku.render.renderer import LayeredPaperRenderer
 from sudoku.render.util.digital_composition import DigitalCompositionMethod
@@ -60,7 +60,7 @@ class Test(TestCase):
 
         renderer = LayeredPaperRenderer(substrate)
 
-        digits = Chars74KIRGBA(digits_path="../datasets/digits_hnd.zip", resolution=res)
+        digits = CuratedCharactersDataset(digits_path="../datasets/digits_hnd.zip", resolution=res)
 
         digit = digits.get_ordered(1, 0)
         renderer.drawing_layer.add_element(digit)
