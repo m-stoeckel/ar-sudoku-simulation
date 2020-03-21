@@ -473,7 +473,7 @@ class DigitDataGenerator(keras.utils.Sequence):
         return x, keras.utils.to_categorical(y, num_classes=9)
 
 
-class BalancedDataGenerator:
+class BalancedDataGenerator(keras.utils.Sequence):
     def __init__(
             self,
             machine_digits: CharacterDataset,
