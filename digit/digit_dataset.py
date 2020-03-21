@@ -97,7 +97,7 @@ class CharacterDataset:
         if keep:
             new_train_x[:n_train] = self.train_x
             new_test_x[:n_test] = self.test_x
-        for i, transforms in enumerate(self.transforms, start=int(keep)):
+        for i, transforms in enumerate(tqdm(self.transforms, desc="Applying transforms"), start=int(keep)):
             for j in range(n_train):
                 img = self.train_x[j]
                 for transform in transforms:
@@ -108,6 +108,10 @@ class CharacterDataset:
                 for transform in transforms:
                     img = transform.apply(img)
                 new_test_x[n_test * i + j] = img
+
+        # save new data
+        self.train_x = new_train_x
+        self.test_x = new_test_x
 
         # duplicate labels
         self.train_y = np.tile(self.train_y, int(keep) + n_transforms)
@@ -123,8 +127,11 @@ class CharacterDataset:
         pass
 
     def resize(self, res=28):
+        if res == self.res:
+            return
         self.train_x = self._get_resized(self.train_x, res)
         self.test_x = self._get_resized(self.test_x, res)
+        self.res = res
 
     def _get_resized(self, data, resolution):
         inter_down = self.inter_down
@@ -378,6 +385,43 @@ class PrerenderedDigitDataset(CharacterDataset):
         self._split(digits, labels)
 
 
+class ConcatDataset(CharacterDataset):
+    r"""Concatenate multiple datasets into a single one. Old datasets should be removed afterwards.
+    """
+
+    def __init__(self, datasets: List[CharacterDataset], delete=True):
+        assert len(datasets) > 0, 'datasets should not be an empty iterable'
+        train_size, test_size = 0, 0
+        res = None
+        for d in datasets:
+            if res is None:
+                res = d.res
+            else:
+                d.resize(res)
+            train_size += d.train_x.shape[0]
+            test_size += d.test_x.shape[0]
+        super(ConcatDataset, self).__init__(res)
+
+        self.train_x: np.ndarray = np.empty((train_size, res, res), dtype=np.uint8)
+        self.train_y: np.ndarray = np.empty(train_size, dtype=int)
+        self.test_x: np.ndarray = np.empty((train_size, res, res), dtype=np.uint8)
+        self.test_y: np.ndarray = np.empty(train_size, dtype=int)
+
+        train_offset = 0
+        test_offset = 0
+        for d in datasets:
+            train_size = d.train_x.shape[0]
+            test_size = d.test_x.shape[0]
+            self.train_x[train_offset:train_offset + train_size] = d.train_x
+            self.train_y[train_offset:train_offset + train_size] = d.train_y
+            self.test_x[test_offset:test_offset + test_size] = d.test_x
+            self.test_y[test_offset:test_offset + test_size] = d.test_y
+            train_offset += train_size
+            test_offset += test_size
+            if delete:
+                del d
+
+
 class DigitDataGenerator(keras.utils.Sequence):
 
     def __init__(
@@ -392,9 +436,9 @@ class DigitDataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
         self.shuffle = shuffle
 
-        self.indices = np.arange(len(self.dataset))
+        self.machine_indices = np.arange(len(self.dataset))
         if self.shuffle:
-            np.random.shuffle(self.indices)
+            np.random.shuffle(self.machine_indices)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -403,7 +447,7 @@ class DigitDataGenerator(keras.utils.Sequence):
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate indexes of the batch
-        indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
+        indices = self.machine_indices[index * self.batch_size:(index + 1) * self.batch_size]
 
         # Generate data
         x, y = self.__data_generation(indices)
@@ -413,9 +457,9 @@ class DigitDataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         """Updates indexes after each epoch"""
-        self.indices = np.arange(len(self.dataset))
+        self.machine_indices = np.arange(len(self.dataset))
         if self.shuffle:
-            np.random.shuffle(self.indices)
+            np.random.shuffle(self.machine_indices)
 
     def __data_generation(self, indices):
         """Generates data containing batch_size samples"""
@@ -427,23 +471,24 @@ class DigitDataGenerator(keras.utils.Sequence):
 
 class BalancedDigitDataGenerator(DigitDataGenerator):
     def __init__(
-            self, dataset: CharacterDataset,
-            mnist: MNIST,
+            self,
+            machine_dataset: CharacterDataset,
+            handwritten_dataset: CharacterDataset,
             batch_size=32,
             shuffle=True,
             flatten=False,
             **kwargs
     ):
-        self.mnist = mnist
+        self.handwritten_dataset = handwritten_dataset
         self.num_classes = 20
 
         self.flatten = flatten
 
-        super().__init__(dataset, batch_size, shuffle, **kwargs)
+        super().__init__(machine_dataset, batch_size, shuffle, **kwargs)
 
-        self.mnist_indices = np.arange(len(self.mnist.train_y))
+        self.handwritten_indices = np.arange(self.handwritten_dataset.train_y.shape[0])
         if self.shuffle:
-            np.random.shuffle(self.mnist_indices)
+            np.random.shuffle(self.handwritten_indices)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -457,12 +502,12 @@ class BalancedDigitDataGenerator(DigitDataGenerator):
         """
         # Generate indexes of the batch
         mini_batch_size = int(self.batch_size / 2)
-        digit_indices = self.indices[index * mini_batch_size:(index + 1) * mini_batch_size]
-        mnist_indices = self.mnist_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
+        machine_indices = self.machine_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
+        handwritten_indices = self.handwritten_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
 
         # Generate data
-        xd, yd = self.__data_generation(digit_indices)
-        xm, ym = self.__mnist_data_generation(mnist_indices)
+        xd, yd = self.__data_generation(machine_indices)
+        xm, ym = self.__mnist_data_generation(handwritten_indices)
 
         # Stack data and convert images to float
         x = np.vstack((xd, xm)).astype(np.float32)
@@ -480,9 +525,9 @@ class BalancedDigitDataGenerator(DigitDataGenerator):
 
     def on_epoch_end(self):
         super().on_epoch_end()
-        self.mnist_indices = np.arange(len(self.mnist.train_y))
+        self.handwritten_indices = np.arange(len(self.handwritten_dataset.train_y))
         if self.shuffle:
-            np.random.shuffle(self.mnist_indices)
+            np.random.shuffle(self.handwritten_indices)
 
     def __data_generation(self, indices, ):
         """
@@ -501,8 +546,8 @@ class BalancedDigitDataGenerator(DigitDataGenerator):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.mnist.train_x[indices]
-        y = self.mnist.train_y[indices]
+        X = self.handwritten_dataset.train_x[indices]
+        y = self.handwritten_dataset.train_y[indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
@@ -526,18 +571,19 @@ def generate_composition():
 
 
 def test_generator():
-    # dataset = CuratedCharactersDataset(digits_path="../datasets/curated/")
-    # dataset.add_transforms(RandomPerspectiveTransform())
-    # dataset.apply_transforms(keep=False)
-    # dataset.resize(28)
-    dataset = PrerenderedDigitDataset(digits_path="../datasets/digits/")
-    dataset.add_transforms(RandomPerspectiveTransform())
+    prerendered_dataset = PrerenderedDigitDataset(digits_path="../datasets/digits/")
+    prerendered_dataset.add_transforms(RandomPerspectiveTransform())
     # dataset.add_transforms(RandomPerspectiveTransformX())
     # dataset.add_transforms(RandomPerspectiveTransformY())
-    dataset.apply_transforms(keep=False)
-    dataset.resize(28)
+    prerendered_dataset.apply_transforms(keep=False)
+    prerendered_dataset.resize(28)
+    curated_dataset = CuratedCharactersDataset(digits_path="../datasets/curated/")
+    curated_dataset.add_transforms(RandomPerspectiveTransform())
+    curated_dataset.apply_transforms(keep=False)
+    curated_dataset.resize(28)
     mnist = ClassSeparateMNIST()
-    d = BalancedDigitDataGenerator(dataset, mnist, batch_size=8, shuffle=True, resolution=28)
+    concat_dataset = ConcatDataset([mnist, curated_dataset])
+    d = BalancedDigitDataGenerator(prerendered_dataset, concat_dataset, batch_size=8, shuffle=True, resolution=28)
     img_l = []
     for i in range(8):
         X, y = d[i]
