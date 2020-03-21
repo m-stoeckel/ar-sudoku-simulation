@@ -3,6 +3,8 @@ from typing import Union
 import cv2
 import numpy as np
 
+from sudoku import Color
+
 
 class ImageTransform:
     def apply(self, img: np.ndarray) -> np.ndarray:
@@ -133,3 +135,30 @@ class LensDistortion(ImageTransform):
         camera_matrix = np.array([[self.f[0], 0, c[0]], [0, self.f[1], c[1]], [0, 0, 1]])
         img = cv2.undistort(img, camera_matrix, self.dist_coeffs)
         return img
+
+
+class EmbedInGrid(ImageTransform):
+    def __init__(self, inset=0.2):
+        self.inset = inset
+        self.offset = inset / 2
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        grid_image_shape = (
+            int(img.shape[0] + self.inset * img.shape[0]),
+            int(img.shape[1] + self.inset * img.shape[1]),
+            img.shape[2]
+        )
+        grid_image = np.full(grid_image_shape, 255, dtype=np.uint8)
+        offset_x, offset_y = int(self.offset * img.shape[0]), int(self.offset * img.shape[1])
+        grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
+        cv2.rectangle(grid_image, (offset_x, offset_y),
+                      (grid_image.shape[0] - offset_x, grid_image.shape[1] - offset_y),
+                      Color.BLACK.value, thickness=int(img.shape[0] * 0.05))
+        return self.random_crop(grid_image, img.shape)
+
+    @staticmethod
+    def random_crop(grid_img, shape) -> np.ndarray:
+        offset = np.array(grid_img.shape) - np.array(shape)
+        offset_x = np.random.randint(0, offset[0])
+        offset_y = np.random.randint(0, offset[1])
+        return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]

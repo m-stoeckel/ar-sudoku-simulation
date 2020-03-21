@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from image import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
+from image.image_transforms import EmbedInGrid
 
 
 class Test(TestCase):
@@ -31,7 +32,7 @@ class Test(TestCase):
         transform = RandomPerspectiveTransform()
         images = [[] for _ in range(9)]
         for i in range(0, 9):
-            img = cv2.imread(f"datasets/digits/{i * 917}.png", cv2.IMREAD_GRAYSCALE)
+            img = cv2.imread(f"../datasets/digits/{i * 917}.png", cv2.IMREAD_GRAYSCALE)
             img = cv2.rectangle(img, (16, 16), (112, 112), (255, 255, 255), 2)
             images[i].append(img)
             for _ in range(4):
@@ -42,4 +43,16 @@ class Test(TestCase):
         imgs.save("composition.png")
         plt.imshow(imgs, cmap="gray")
         plt.axis('off')
+        plt.show()
+
+    def test_embed(self):
+        digit = cv2.imread("../datasets/digits/1.png")
+        cv2.bitwise_not(digit, digit)
+        transform = EmbedInGrid()
+        tdigit = transform.apply(digit)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
+        ax1.axis('off')
+        ax2.axis('off')
+        ax1.imshow(digit)
+        ax2.imshow(tdigit)
         plt.show()
