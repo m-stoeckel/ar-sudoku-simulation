@@ -3,7 +3,7 @@ import warnings
 import keras
 import numpy as np
 
-from digit.dataset import CharacterDataset
+from simulation.digit.dataset import CharacterDataset
 
 
 @DeprecationWarning
@@ -13,8 +13,7 @@ class DigitDataGenerator(keras.utils.Sequence):
             self,
             dataset: CharacterDataset,
             batch_size=32,
-            shuffle=True,
-            **kwargs
+            shuffle=True
     ):
         """Initialization"""
         self.dataset = dataset

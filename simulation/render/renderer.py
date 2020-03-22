@@ -3,8 +3,8 @@ from typing import Union
 
 import numpy as np
 
-from sudoku.render.layers.base_layers import DigitalCompositionLayer, DrawingLayer, SubstrateLayer
-from sudoku.render.util.digital_composition import AlphaComposition
+from simulation.render.layers import DigitalCompositionLayer, DrawingLayer, SubstrateLayer
+from simulation.render import AlphaComposition
 
 
 class LayeredPaperRenderer:

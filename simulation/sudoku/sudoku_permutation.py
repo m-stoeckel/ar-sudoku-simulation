@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from sudoku.sudoku_generator import Sudoku, SudokuGenerator
+from simulation.sudoku import Sudoku, SudokuGenerator
 
 
 class SudokuPermutation:

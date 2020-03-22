@@ -4,13 +4,13 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from digit.dataset import CuratedCharactersDataset
-from sudoku.render.layers.base_layers import DigitalCompositionLayer, SubstrateLayer
-from sudoku.render.renderer import LayeredPaperRenderer
-from sudoku.render.util.digital_composition import DigitalCompositionMethod
+from simulation.digit.dataset import CuratedCharactersDataset
+from simulation.render import DigitalCompositionLayer, SubstrateLayer
+from simulation.render import DigitalCompositionMethod
+from simulation.render import LayeredPaperRenderer
 
 
-class Test(TestCase):
+class TestPaperRenderer(TestCase):
     def test_add_element(self):
         printing_layer = DigitalCompositionLayer((2, 2))
         el_1 = np.array([[[1, 2, 3, 255], [1, 2, 3, 255]], [[4, 5, 6, 255], [1, 2, 3, 255]]], dtype=np.uint8)
@@ -61,7 +61,7 @@ class Test(TestCase):
 
         renderer = LayeredPaperRenderer(substrate)
 
-        digits = CuratedCharactersDataset(digits_path="../datasets/curated/", resolution=res)
+        digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", resolution=res)
         digits.invert()
         digits.cvtColor(cv2.COLOR_GRAY2BGRA)
 
@@ -82,62 +82,6 @@ class Test(TestCase):
         plt.tight_layout()
         plt.imshow(img)
         plt.show()
-
-    #     plt.subplots(4, 4, figsize=(12, 12))
-    #     for i, ralpha in enumerate([63, 127, 191, 255]):
-    #         for j, balpha in enumerate([63, 127, 191, 255]):
-    #             red = np.zeros((100, 100, 4), dtype=np.uint8)
-    #             red[:, :, 0] = 255
-    #             red[:, :, 3] = ralpha
-    #
-    #             blue = np.zeros((100, 100, 4), dtype=np.uint8)
-    #             blue[:, :, 2] = 255
-    #             blue[:, :, 3] = balpha
-    #
-    #             printing_layer = DigitalCompositionLayer((100, 100), bg_color=Color.WHITE)
-    #             printing_layer.add_element(red)
-    #             printing_layer.add_element(blue)
-    #
-    #             ax: Axes = plt.subplot2grid((4, 4), (i, j))
-    #             ax.axis('off')
-    #             ax.imshow(printing_layer.compose())
-    #             ax.set_title(f"$\\alpha_r={ralpha}, \\alpha_b={balpha}$")
-    #     plt.show()
-
-    # def test_composites(self):
-    #     alpha_composition = AlphaComposition()
-    #
-    #     for alpha in [64, 128, 192, 255]:
-    #         red = np.zeros((100, 100, 4), dtype=np.uint8)
-    #         red[:, :, 0] = 255
-    #         red[:, :, 3] = alpha
-    #
-    #         blue = np.zeros((100, 100, 4), dtype=np.uint8)
-    #         blue[:, :, 2] = 255
-    #         blue[:, :, 3] = alpha
-    #
-    #         img_1 = red.copy()
-    #         img_1[:, 50:] = blue[:, 50:]
-    #         img_2 = alpha_composition(red, blue)
-    #         img_3 = alpha_composition(red, blue)
-    #         img_4 = cv2.addWeighted(red, 0.5, blue, 0.5, 0)
-    #
-    #         self.plot(alpha, img_1, img_2, img_3, img_4)
-    #
-    #         img_1 = red.copy()
-    #         img_1[:, 50:] = blue[:, 50:]
-    #         img_3 = alpha_composition(red, blue)
-    #         img_4 = alpha_composition(red, blue)
-    #
-    #         self.plot(alpha, img_1, img_2, img_3, img_4)
-    #
-    # def plot(self, alpha, img_1, img_2, img_3, img_4):
-    #     plt.figure(figsize=(6, 2))
-    #     plt.axis('off')
-    #     plt.tight_layout()
-    #     plt.imshow(np.hstack((img_1, img_2, img_3, img_4)))
-    #     plt.title(f"$\\alpha={alpha}$")
-    #     plt.show()
 
     @staticmethod
     def scale_color_by_alpha(color):
