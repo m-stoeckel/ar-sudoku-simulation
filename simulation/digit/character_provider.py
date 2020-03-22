@@ -7,8 +7,8 @@ import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 from p_tqdm import p_map
 
-from digit.fonts import Font
-from sudoku import Color
+from simulation.digit.fonts import Font
+from simulation.render import Color
 
 
 class CharacterRenderer:
@@ -26,22 +26,21 @@ class CharacterRenderer:
         char_img = np.array(char_img)
         return char_img
 
-    def prerender_all(self):
-        character_dir = Path("../datasets/characters/")
+    def prerender_all(self, character_dir=Path("../../datasets/characters/")):
         character_dir.mkdir(exist_ok=True)
+        font_list = list(Font)
 
-        def _prerender_font(font):
-            output_dir = character_dir / font.name
-            output_dir.mkdir(exist_ok=True)
-
+        def _prerender_font(font: Font):
             # Choose fontsize from resolution
             font_size_pt = int(self.render_resolution[1] / 1.3)
-            font = ImageFont.truetype(font.value, font_size_pt)
+            ttfont = ImageFont.truetype(font.value, font_size_pt)
             for char in self.char_list:
-                char_img = self.render_character(char, font)
-                cv2.imwrite(str(output_dir / f"{ord(char)}.png"), char_img)
+                char_img = self.render_character(char, ttfont)
+                output_dir = character_dir / str(ord(char))
+                output_dir.mkdir(exist_ok=True)
+                cv2.imwrite(str(output_dir / f"{font_list.index(font)}.png"), char_img)
 
-        p_map(_prerender_font, list(Font), desc="Rendering fonts", num_cpus=os.cpu_count())
+        p_map(_prerender_font, font_list, desc="Rendering fonts", num_cpus=os.cpu_count())
 
 
 class SingleFontCharacterRenderer(CharacterRenderer):

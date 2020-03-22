@@ -2,10 +2,11 @@ from typing import Union
 
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
-from digit.dataset import MNIST, plt, CuratedCharactersDataset
-from sudoku.render.layers.base_layers import DigitalCompositionLayer
-from sudoku.render.util.colors import Color
+from simulation.digit.dataset import MNIST, CuratedCharactersDataset
+from simulation.render import Color
+from simulation.render.layers import DigitalCompositionLayer
 
 DEBUG = True
 
@@ -59,7 +60,8 @@ class SudokuLayer(DigitalCompositionLayer):
         return grid_image
 
     @staticmethod
-    def draw_sudoku_pil_mnist(sudoku, masking_rate=0.7, digits: Union[MNIST, CuratedCharactersDataset] = None, hw_rate=0.2,
+    def draw_sudoku_pil_mnist(sudoku, masking_rate=0.7, digits: Union[MNIST, CuratedCharactersDataset] = None,
+                              hw_rate=0.2,
                               cell_size=28):
         # Mask setup
         printed_digit_mask = np.random.choice([False, True], size=sudoku.shape, p=[masking_rate, 1 - masking_rate])

@@ -107,8 +107,7 @@ class Sudoku:
 
 
 class SudokuGenerator:
-    def __init__(self, n: int, font_path: Union[Path, str] = 'fonts/free-mono.ttf',
-                 workers=1):
+    def __init__(self, n: int, workers=1):
         self.generated: List[Sudoku] = []
         self.n = n
         self.workers = min(workers, n)

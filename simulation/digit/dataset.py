@@ -8,15 +8,15 @@ from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
 from tqdm import tqdm, trange
 
-from image.image_transforms import *
-from image.image_transforms import ImageTransform
+from simulation.image.image_transforms import *
+from simulation.image.image_transforms import ImageTransform
+DEBUG = False
 
 INTER_DOWN_HIGH = cv2.INTER_LANCZOS4
 INTER_DOWN_FAST = cv2.INTER_NEAREST
 INTER_UP_HIGH = cv2.INTER_CUBIC
 INTER_UP_FAST = cv2.INTER_AREA
 
-DEBUG = True
 # Classmap: {0: OUT, 0..9: #_MACHINE, 10: EMPTY, 11..19: #_HAND}
 CLASS_OUT = 0
 CLASS_EMPTY = 10
@@ -65,9 +65,18 @@ class CharacterDataset:
 
         self._load()
 
-    def _get_label(self, id: Union[int, str]):
-        if char_is_valid_number(id):
-            return int(chr(id)) + self.digit_offset
+    def _load(self):
+        pass
+
+    def __getitem__(self, item):
+        return self.train_x[item]
+
+    def __len__(self):
+        return self.train_x.shape[0]
+
+    def get_label(self, char: Union[int, str]):
+        if char_is_valid_number(char):
+            return int(chr(char)) + self.digit_offset
         else:
             return CLASS_OUT
 
@@ -117,15 +126,6 @@ class CharacterDataset:
         # duplicate labels
         self.train_y = np.tile(self.train_y, int(keep) + n_transforms)
         self.test_y = np.tile(self.test_y, int(keep) + n_transforms)
-
-    def __len__(self):
-        return self.train_x.shape[0]
-
-    def __getitem__(self, item):
-        return self.train_x[item]
-
-    def _load(self):
-        pass
 
     def resize(self, resolution=28):
         """
@@ -451,7 +451,7 @@ class CuratedCharactersDataset(CharacterDataset):
         for char in self.load_chars:
             files = os.listdir(self.digit_path / str(char))
             for file in files:
-                label = self._get_label(char)
+                label = self.get_label(char)
                 self.file_map.update({str(self.digit_path / str(char) / file): label})
 
         super().__init__(resolution, **kwargs)

@@ -3,7 +3,7 @@ from typing import Union
 import cv2
 import numpy as np
 
-from sudoku import Color
+from simulation.render import Color
 
 
 class ImageTransform:

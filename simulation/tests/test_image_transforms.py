@@ -4,13 +4,13 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from image import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
-from image.image_transforms import EmbedInGrid
+from simulation.image import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
+from simulation.image.image_transforms import EmbedInGrid
 
 
-class Test(TestCase):
-    def test(self):
-        img = cv2.imread("../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+class ImageTransformTests(TestCase):
+    def test_with_sudoku(self):
+        img = cv2.imread("../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
         img = GaussianNoise().apply(img)
         img = RandomPerspectiveTransform(0.2).apply(img)
         img = GaussianBlur().apply(img)
@@ -20,9 +20,21 @@ class Test(TestCase):
         plt.axis('off')
         plt.show()
 
+    def test_embed(self):
+        digit = cv2.imread("../../datasets/digits/1.png")
+        cv2.bitwise_not(digit, digit)
+        transform = EmbedInGrid()
+        tdigit = transform.apply(digit)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
+        ax1.axis('off')
+        ax2.axis('off')
+        ax1.imshow(digit)
+        ax2.imshow(tdigit)
+        plt.show()
+
     def transform_sudoku(self):
         transform = RandomPerspectiveTransform()
-        img = cv2.imread(f"../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(f"../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
         transformed = transform.apply(img)
         plt.imshow(transformed, cmap="gray")
         plt.axis('off')
@@ -43,16 +55,4 @@ class Test(TestCase):
         imgs.save("composition.png")
         plt.imshow(imgs, cmap="gray")
         plt.axis('off')
-        plt.show()
-
-    def test_embed(self):
-        digit = cv2.imread("../datasets/digits/1.png")
-        cv2.bitwise_not(digit, digit)
-        transform = EmbedInGrid()
-        tdigit = transform.apply(digit)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
-        ax1.axis('off')
-        ax2.axis('off')
-        ax1.imshow(digit)
-        ax2.imshow(tdigit)
         plt.show()
