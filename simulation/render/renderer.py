@@ -3,8 +3,8 @@ from typing import Union
 
 import numpy as np
 
-from simulation.render.layers import DigitalCompositionLayer, DrawingLayer, SubstrateLayer
 from simulation.render import AlphaComposition
+from simulation.render.layers import DigitalCompositionLayer, DrawingLayer, SubstrateLayer
 
 
 class LayeredPaperRenderer:

@@ -1,6 +1,5 @@
 import multiprocessing as mp
-from pathlib import Path
-from typing import Union, List
+from typing import List
 
 import numpy as np
 
