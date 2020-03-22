@@ -1,4 +1,5 @@
 import warnings
+from typing import Tuple
 
 import keras
 import numpy as np
@@ -56,9 +57,9 @@ class DigitDataGenerator(keras.utils.Sequence):
 class BalancedDataGenerator(keras.utils.Sequence):
     def __init__(
             self,
-            machine_digits: CharacterDataset,
-            handwritten_digits: CharacterDataset,
-            out_dataset: CharacterDataset,
+            machine_digits: (np.ndarray, np.ndarray),
+            handwritten_digits: (np.ndarray, np.ndarray),
+            out_dataset: (np.ndarray, np.ndarray),
             batch_size=32,
             shuffle=True,
             flatten=False,
@@ -77,23 +78,31 @@ class BalancedDataGenerator(keras.utils.Sequence):
 
         self.num_classes = 20
 
-        self.machine_indices = np.arange(self.machine_dataset.train_y.shape[0])
-        self.handwritten_indices = np.arange(self.handwritten_dataset.train_y.shape[0])
-        self.out_indices = np.arange(self.out_dataset.train_y.shape[0])
+        self.machine_len = self.machine_dataset[0].shape[0]
+        self.handwritten_len = self.handwritten_dataset[0].shape[0]
+        self.out_len = self.out_dataset[0].shape[0]
+
+        self.machine_indices = np.arange(self.machine_len)
+        self.handwritten_indices = np.arange(self.handwritten_len)
+        self.out_indices = np.arange(self.out_len)
 
         if self.shuffle:
             np.random.shuffle(self.machine_indices)
             np.random.shuffle(self.handwritten_indices)
+            np.random.shuffle(self.out_indices)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return int(np.ceil(len(self.machine_dataset) * 2 / self.batch_size))
+        return int(np.ceil((self.handwritten_len + self.machine_len + self.out_len) / self.batch_size))
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         """
         Generate one batch of data
+
         :param index: The batch number.
+        :type index: int
         :return: Returns a tuple of a 4-dimensional ndarray and the class-categorical label ndarray
+        :rtype: Tuple[np.ndarray, np.ndarray]
         """
         # Generate indexes of the batch
         mini_batch_size = int(self.batch_size / 3)
@@ -123,41 +132,43 @@ class BalancedDataGenerator(keras.utils.Sequence):
         return x, y
 
     def on_epoch_end(self):
-        self.machine_indices = np.arange(len(self.machine_dataset))
-        self.handwritten_indices = np.arange(len(self.handwritten_dataset.train_y))
+        self.machine_indices = np.arange(self.machine_len)
+        self.handwritten_indices = np.arange(self.handwritten_len)
+        self.out_indices = np.arange(self.out_len)
         if self.shuffle:
             np.random.shuffle(self.machine_indices)
             np.random.shuffle(self.handwritten_indices)
+            np.random.shuffle(self.out_indices)
 
-    def __machine_data_generation(self, indices, ):
+    def __machine_data_generation(self, indices):
         """
         Generates data containing batch_size samples. Machine written digits have class <digit>.
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.machine_dataset.train_x[indices]
-        y = self.machine_dataset.train_y[indices]
+        X = self.machine_dataset[0][indices]
+        y = self.machine_dataset[1][indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
-    def __handwritten_data_generation(self, indices, ):
+    def __handwritten_data_generation(self, indices):
         """
         Generates data containing batch_size samples. MNIST digits have class <digit> + 9.
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.handwritten_dataset.train_x[indices]
-        y = self.handwritten_dataset.train_y[indices]
+        X = self.handwritten_dataset[0][indices]
+        y = self.handwritten_dataset[1][indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
-    def __out_data_generation(self, indices, ):
+    def __out_data_generation(self, indices):
         """
         Generates data containing batch_size samples. MNIST digits have class <digit> + 9.
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.out_dataset.train_x[indices]
-        y = self.out_dataset.train_y[indices]
+        X = self.out_dataset[0][indices]
+        y = self.out_dataset[1][indices]
 
         return X, keras.utils.to_categorical(y, num_classes=self.num_classes)

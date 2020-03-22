@@ -143,11 +143,17 @@ class EmbedInGrid(ImageTransform):
         self.offset = inset / 2
 
     def apply(self, img: np.ndarray) -> np.ndarray:
-        grid_image_shape = (
-            int(img.shape[0] + self.inset * img.shape[0]),
-            int(img.shape[1] + self.inset * img.shape[1]),
-            img.shape[2]
-        )
+        if len(img.shape) == 3:
+            grid_image_shape = (
+                int(img.shape[0] + self.inset * img.shape[0]),
+                int(img.shape[1] + self.inset * img.shape[1]),
+                img.shape[2]
+            )
+        else:
+            grid_image_shape = (
+                int(img.shape[0] + self.inset * img.shape[0]),
+                int(img.shape[1] + self.inset * img.shape[1]),
+            )
         grid_image = np.full(grid_image_shape, 255, dtype=np.uint8)
         offset_x, offset_y = int(self.offset * img.shape[0]), int(self.offset * img.shape[1])
         grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img

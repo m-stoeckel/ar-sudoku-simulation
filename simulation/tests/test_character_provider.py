@@ -5,4 +5,4 @@ from simulation import CharacterRenderer
 
 class TestCharacterProvider(TestCase):
     def test_prerender_all(self):
-        CharacterRenderer().prerender_all()
+        CharacterRenderer().prerender_all(mode='L')

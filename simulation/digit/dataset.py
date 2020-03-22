@@ -112,10 +112,16 @@ class CharacterDataset:
                     img = transform.apply(img)
                 return img
 
-            train_x_i = p_map(_apply_transforms, [self.train_x[j] for j in range(n_train)], desc="Processing images",
-                              position=1, leave=False, disable=True, num_cpus=os.cpu_count())
-            test_x_i = p_map(_apply_transforms, [self.test_x[j] for j in range(n_test)], desc="Processing images",
-                             position=1, leave=False, disable=True, num_cpus=os.cpu_count())
+            train_x_i = p_map(
+                _apply_transforms, list(self.train_x), desc="Processing images (1/2)",
+                position=1, leave=False, disable=False,
+                num_cpus=os.cpu_count()
+            )
+            test_x_i = p_map(
+                _apply_transforms, list(self.test_x), desc="Processing images (2/2)",
+                position=1, leave=False, disable=False,
+                num_cpus=os.cpu_count()
+            )
 
             new_train_x[n_train * i:n_train * (i + 1)] = train_x_i
             new_test_x[n_test * i:n_test * (i + 1)] = test_x_i
@@ -528,12 +534,20 @@ class PrerenderedDigitDataset(CharacterDataset):
         self._split(digits, labels)
 
 
+class PrerenderedCharactersDataset(CuratedCharactersDataset):
+    _default_digit_parent_path = "datasets/"
+    _default_digit_path = "datasets/characters/"
+
+    def __init__(self, digits_path=_default_digit_path, resolution=64, load_chars=None, **kwargs):
+        super().__init__(digits_path, resolution, load_chars, **kwargs)
+
+
 class ConcatDataset(CharacterDataset):
     r"""Concatenate multiple datasets into a single one. Old datasets should be removed afterwards.
     """
 
     def __init__(self, datasets: List[CharacterDataset], delete=True):
-        assert len(datasets) > 0, 'datasets should not be an empty iterable'
+        assert len(datasets) > 0, 'Datasets should not be an empty iterable'
         train_size, test_size = 0, 0
         res = None
         for d in datasets:
