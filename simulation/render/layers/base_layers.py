@@ -54,7 +54,7 @@ class DigitalCompositionLayer(Layer):
             result = self.elements[0]
         else:
             shape = (self.shape[0], self.shape[1], 4)
-            result = np.empty(shape, dtype=np.uint8)
+            result = np.zeros(shape, dtype=np.uint8)
 
         if self.backside:
             result = np.fliplr(result)

@@ -101,8 +101,8 @@ class CharacterDataset:
         new_test_shape = self.test_x.shape * np.array([int(keep) + n_transforms, 1, 1])
 
         # apply transforms to train and test data
-        new_train_x = np.empty(new_train_shape, dtype=np.uint8)
-        new_test_x = np.empty(new_test_shape, dtype=np.uint8)
+        new_train_x = np.zeros(new_train_shape, dtype=np.uint8)
+        new_test_x = np.zeros(new_test_shape, dtype=np.uint8)
         if keep:
             new_train_x[:n_train] = self.train_x
             new_test_x[:n_test] = self.test_x
@@ -162,7 +162,7 @@ class CharacterDataset:
             shape = tuple([num_digits] + [resolution, resolution] + [data.shape[3]])
         else:
             shape = (num_digits, resolution, resolution)
-        new_digits = np.empty(shape, dtype=np.uint8)
+        new_digits = np.zeros(shape, dtype=np.uint8)
 
         # Run the resize operation on all images in parallel
         resized_images = p_map(_do_resize, [data[i] for i in range(num_digits)],
@@ -211,7 +211,7 @@ class CharacterDataset:
             num_digits = data.shape[0]
             shape = list(cv2.cvtColor(data[0], mode).shape)
             shape = tuple([num_digits] + shape)
-            new_digits = np.empty(shape, dtype=np.uint8)
+            new_digits = np.zeros(shape, dtype=np.uint8)
 
             # Run the color transformation in parallel
             recolored_images = p_map(_do_cvtcolor, [data[i] for i in range(num_digits)],
@@ -469,8 +469,8 @@ class CuratedCharactersDataset(CharacterDataset):
         """
         char_count = len(self.file_map)
 
-        digits = np.empty((char_count, self.resolution, self.resolution), dtype=np.uint8)
-        labels = np.empty(char_count, dtype=int)
+        digits = np.zeros((char_count, self.resolution, self.resolution), dtype=np.uint8)
+        labels = np.zeros(char_count, dtype=int)
 
         for i, (path, label) in tqdm(enumerate(self.file_map.items()), total=char_count, desc="Loading images"):
             img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
@@ -518,8 +518,8 @@ class PrerenderedDigitDataset(CharacterDataset):
 
     def _load(self):
         digit_count = 9 * self.digit_count
-        digits = np.empty((digit_count, self.resolution, self.resolution), dtype=np.uint8)
-        labels = np.empty(digit_count, dtype=int)
+        digits = np.zeros((digit_count, self.resolution, self.resolution), dtype=np.uint8)
+        labels = np.zeros(digit_count, dtype=int)
 
         for i in trange(digit_count, desc="Loading images"):
             digit_path = self.digit_path / f"{i}.png"
@@ -559,10 +559,10 @@ class ConcatDataset(CharacterDataset):
             test_size += d.test_x.shape[0]
         super(ConcatDataset, self).__init__(res)
 
-        self.train_x: np.ndarray = np.empty((train_size, res, res), dtype=np.uint8)
-        self.train_y: np.ndarray = np.empty(train_size, dtype=int)
-        self.test_x: np.ndarray = np.empty((train_size, res, res), dtype=np.uint8)
-        self.test_y: np.ndarray = np.empty(train_size, dtype=int)
+        self.train_x: np.ndarray = np.zeros((train_size, res, res), dtype=np.uint8)
+        self.train_y: np.ndarray = np.zeros(train_size, dtype=int)
+        self.test_x: np.ndarray = np.zeros((test_size, res, res), dtype=np.uint8)
+        self.test_y: np.ndarray = np.zeros(test_size, dtype=int)
 
         train_offset = 0
         test_offset = 0
