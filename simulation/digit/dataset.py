@@ -10,6 +10,7 @@ from tqdm import tqdm, trange
 
 from simulation.image.image_transforms import *
 from simulation.image.image_transforms import ImageTransform
+
 DEBUG = False
 
 INTER_DOWN_HIGH = cv2.INTER_LANCZOS4
