@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Union, Tuple
 
@@ -40,7 +41,7 @@ class CharacterRenderer:
                 char_img = self.render_character(char, font)
                 cv2.imwrite(str(output_dir / f"{ord(char)}.png"), char_img)
 
-        p_map(_prerender_font, list(Font), desc="Rendering fonts")
+        p_map(_prerender_font, list(Font), desc="Rendering fonts", num_cpus=os.cpu_count())
 
 
 class SingleFontCharacterRenderer(CharacterRenderer):

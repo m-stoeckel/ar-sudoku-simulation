@@ -96,17 +96,19 @@ class CharacterDataset:
         if keep:
             new_train_x[:n_train] = self.train_x
             new_test_x[:n_test] = self.test_x
-        for i, transforms in enumerate(tqdm(self.transforms, desc="Applying transforms"), start=int(keep)):
-            for j in range(n_train):
-                img = self.train_x[j]
+        for i, transforms in enumerate(tqdm(self.transforms, desc="Applying transforms", position=0), start=int(keep)):
+            def _apply_transforms(img):
                 for transform in transforms:
                     img = transform.apply(img)
-                new_train_x[n_train * i + j] = img
-            for j in range(n_test):
-                img = self.test_x[j]
-                for transform in transforms:
-                    img = transform.apply(img)
-                new_test_x[n_test * i + j] = img
+                return img
+
+            train_x_i = p_map(_apply_transforms, [self.train_x[j] for j in range(n_train)], desc="Processing images",
+                              position=1, leave=False, disable=True, num_cpus=os.cpu_count())
+            test_x_i = p_map(_apply_transforms, [self.test_x[j] for j in range(n_test)], desc="Processing images",
+                             position=1, leave=False, disable=True, num_cpus=os.cpu_count())
+
+            new_train_x[n_train * i:n_train * (i + 1)] = train_x_i
+            new_test_x[n_test * i:n_test * (i + 1)] = test_x_i
 
         # save new data
         self.train_x = new_train_x
