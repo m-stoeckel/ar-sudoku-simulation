@@ -5,40 +5,66 @@ from matplotlib import pyplot as plt
 
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.dataset import PrerenderedDigitDataset, RandomPerspectiveTransform, CuratedCharactersDataset, \
-    ClassSeparateMNIST, ConcatDataset
+    ClassSeparateMNIST, ConcatDataset, PrerenderedCharactersDataset
 
 
 class Test(TestCase):
     def test_generator(self):
-        prerendered_dataset = PrerenderedDigitDataset(digits_path="../../datasets/digits/")
-        prerendered_dataset.add_transforms(RandomPerspectiveTransform())
+        digit_characters = "123456789"
+        non_digit_characters = "0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
+
+        # Digit dataset
+        digit_dataset = PrerenderedDigitDataset(digits_path="../../datasets/digits/")
+        digit_dataset.add_transforms(RandomPerspectiveTransform())
         # dataset.add_transforms(RandomPerspectiveTransformX())
         # dataset.add_transforms(RandomPerspectiveTransformY())
-        prerendered_dataset.apply_transforms(keep=False)
-        prerendered_dataset.resize(28)
+        digit_dataset.apply_transforms(keep=False)
+        digit_dataset.resize(28)
 
-        # handwritten non-digits
+        # Prerendered character dataset - digits
+        prerendered_digit_dataset = PrerenderedCharactersDataset(
+            digits_path="../../datasets/characters/",
+            load_chars=digit_characters
+        )
+        prerendered_digit_dataset.add_transforms(RandomPerspectiveTransform())
+        prerendered_digit_dataset.apply_transforms(keep=False)
+        prerendered_digit_dataset.resize(28)
+
+        # Prerendered character dataset - non-digits
+        prerendered_nondigit_dataset = PrerenderedCharactersDataset(
+            digits_path="../../datasets/characters/",
+            load_chars=non_digit_characters
+        )
+        prerendered_nondigit_dataset.add_transforms(RandomPerspectiveTransform())
+        prerendered_nondigit_dataset.apply_transforms(keep=False)
+        prerendered_nondigit_dataset.resize(28)
+
+        # Handwritten non-digits
         curated_out = CuratedCharactersDataset(
             digits_path="../../datasets/curated/",
-            load_chars="0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
+            load_chars=non_digit_characters
         )
         curated_out.add_transforms(RandomPerspectiveTransform())
         curated_out.apply_transforms(keep=False)
         curated_out.resize(28)
 
-        # handwritten digits
-        curated_digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", load_chars="123456789")
+        # Handwritten digits
+        curated_digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", load_chars=digit_characters)
         curated_digits.add_transforms(RandomPerspectiveTransform())
         curated_digits.apply_transforms(keep=False)
         curated_digits.resize(28)
 
-        # mnist digits
+        # Mnist digits
         mnist = ClassSeparateMNIST(data_home="../../datasets/")
-        concat_dataset = ConcatDataset([mnist, curated_digits])
+
+        # Concatenate datasets
+        concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
+        concat_hand = ConcatDataset([mnist, curated_digits])
+        concat_out = ConcatDataset([curated_out, prerendered_nondigit_dataset])
 
         batch_size = 12
         d = BalancedDataGenerator(
-            prerendered_dataset, concat_dataset, curated_out,
+            concat_machine, concat_hand, concat_out,
             batch_size=batch_size,
             shuffle=True,
             resolution=28
@@ -51,3 +77,7 @@ class Test(TestCase):
         plt.imshow(np.vstack(img_l), cmap="gray")
         plt.axis('off')
         plt.show()
+
+
+if __name__ == '__main__':
+    Test().test_generator()
