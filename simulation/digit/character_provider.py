@@ -31,7 +31,8 @@ class CharacterRenderer:
         char_img = np.array(char_img)
         return char_img
 
-    def prerender_all(self, character_dir=Path("../../datasets/characters/"), mode='RGBA'):
+    def prerender_all(self, base_dir=Path("."), mode='RGBA'):
+        character_dir = base_dir / "datasets/characters/"
         character_dir.mkdir(exist_ok=True)
         font_list = list(Font)
 
@@ -41,7 +42,7 @@ class CharacterRenderer:
             # but 1.2 works better for the given task
             font_size_pt = int(self.render_resolution[1] / 1.2)
 
-            ttfont = ImageFont.truetype(font.value, font_size_pt)
+            ttfont = ImageFont.truetype(str(base_dir / font.value), font_size_pt)
             for char in self.char_list:
                 char_img = self.render_character(char, ttfont, mode)
                 output_dir = character_dir / str(ord(char))
@@ -95,4 +96,4 @@ def get_resolution(render_resolution):
 
 
 if __name__ == '__main__':
-    CharacterRenderer().prerender_all(mode='L')
+    CharacterRenderer().prerender_all(Path("../../"), mode='L')
