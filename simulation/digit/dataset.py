@@ -2,7 +2,7 @@ import os
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import List, Iterable, Tuple
+from typing import Iterable
 
 from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
@@ -14,9 +14,9 @@ from simulation.image.image_transforms import ImageTransform
 DEBUG = False
 
 INTER_DOWN_HIGH = cv2.INTER_LANCZOS4
-INTER_DOWN_FAST = cv2.INTER_NEAREST
+INTER_DOWN_FAST = cv2.INTER_AREA
 INTER_UP_HIGH = cv2.INTER_CUBIC
-INTER_UP_FAST = cv2.INTER_AREA
+INTER_UP_FAST = cv2.INTER_LINEAR
 
 # Classmap: {0: OUT, 0..9: #_MACHINE, 10: EMPTY, 11..19: #_HAND}
 CLASS_OUT = 0
@@ -47,7 +47,7 @@ class CharacterDataset:
             self,
             resolution,
             shuffle=True,
-            fast_resize=False
+            fast_resize=True
     ):
         self.resolution = resolution
         self.shuffle = shuffle
@@ -577,3 +577,27 @@ class ConcatDataset(CharacterDataset):
             test_offset += test_size
             if delete:
                 del d
+
+
+class EmptyDataset(CharacterDataset):
+    def __init__(self, resolution, size=1000):
+        super().__init__(resolution)
+        self.size = size
+
+    def _load(self):
+        data = np.zeros((self.size, self.resolution, self.resolution, 1), dtype=np.uint8)
+        labels = np.full(self.size, CLASS_EMPTY, dtype=int)
+        self._split(data, labels)
+
+    def _split(self, data, labels):
+        """
+        Split the dataset into train and validation splits.
+
+        :param data: An array of images
+        :param labels: An array of labels
+        """
+        train_count = int(data.shape[0] * 0.9)
+        self.train_x = data[:train_count]
+        self.train_y = labels[:train_count]
+        self.test_x = data[train_count:]
+        self.test_y = labels[train_count:]
