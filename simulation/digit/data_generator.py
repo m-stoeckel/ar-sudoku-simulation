@@ -93,7 +93,7 @@ class BalancedDataGenerator(keras.utils.Sequence):
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        return int(np.ceil((self.handwritten_len + self.machine_len + self.out_len) / self.batch_size))
+        return int(np.ceil(min(self.handwritten_len, self.machine_len, self.out_len) * 3 / self.batch_size))
 
     def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         """
