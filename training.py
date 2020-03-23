@@ -1,3 +1,4 @@
+import cv2
 import h5py
 import keras
 import tensorflow as tf
@@ -42,6 +43,41 @@ def get_cnn_model(n_classes=18):
     model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
     return model
+
+
+def train_mnist():
+    batch_size = 64
+    print("Loading data..")
+    mnist_dataset = MNIST()
+    print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
+
+    # Convert native MNIST to trainable format
+    train_x = mnist_dataset.train_x.astype(np.float32)
+    train_x = train_x[:, :, :, np.newaxis]
+    train_x /= 255.
+    train_y = keras.utils.to_categorical(mnist_dataset.train_y, num_classes=10)
+
+    test_x = mnist_dataset.test_x.astype(np.float32)
+    test_x = test_x[:, :, :, np.newaxis]
+    test_x /= 255.
+    test_y = keras.utils.to_categorical(mnist_dataset.test_y, num_classes=10)
+
+    # Keras Model
+    print("Creating model..")
+    model = get_cnn_model(n_classes=10)
+
+    print("Compiling model..")
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                  optimizer=keras.optimizers.Adagrad(),
+                  metrics=['accuracy'])
+    print(model.summary())
+
+    print("Starting training..")
+    model.fit(
+        train_x, train_y,
+        epochs=10, batch_size=batch_size,
+        validation_data=(test_x, test_y)
+    )
 
 
 def train_linear():
@@ -184,7 +220,7 @@ def create_datasets():
     noise = GaussianNoise()
     blur = GaussianBlur()
     embed = EmbedInGrid()
-    perspective_transform = RandomPerspectiveTransform(0.1)
+    perspective_transform = RandomPerspectiveTransform(0.2)
     rescale_intermediate_transforms = RescaleIntermediateTransforms((14, 14), [noise, blur])
 
     # Apply many transforms to machine digits
@@ -235,41 +271,20 @@ def load_datasets():
     return concat_hand, concat_machine, concat_out
 
 
-def train_mnist():
-    batch_size = 64
-    print("Loading data..")
-    mnist_dataset = MNIST()
-    print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
+def create_data_overview(samples=(20, 20)):
+    concat_hand, concat_machine, concat_out = load_datasets()
 
-    # Convert native MNIST to trainable format
-    train_x = mnist_dataset.train_x.astype(np.float32)
-    train_x = train_x[:, :, :, np.newaxis]
-    train_x /= 255.
-    train_y = keras.utils.to_categorical(mnist_dataset.train_y, num_classes=10)
-
-    test_x = mnist_dataset.test_x.astype(np.float32)
-    test_x = test_x[:, :, :, np.newaxis]
-    test_x /= 255.
-    test_y = keras.utils.to_categorical(mnist_dataset.test_y, num_classes=10)
-
-    # Keras Model
-    print("Creating model..")
-    model = get_cnn_model(n_classes=10)
-
-    print("Compiling model..")
-    model.compile(loss=keras.losses.categorical_crossentropy,
-                  optimizer=keras.optimizers.Adagrad(),
-                  metrics=['accuracy'])
-    print(model.summary())
-
-    print("Starting training..")
-    model.fit(
-        train_x, train_y,
-        epochs=10, batch_size=batch_size,
-        validation_data=(test_x, test_y)
-    )
+    for dataset, name in [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")]:
+        indices = np.arange(dataset.train_x.shape[0])
+        np.random.shuffle(indices)
+        image = dataset.train_x[indices[:np.prod(samples)]] \
+            .reshape(samples[0], samples[1], 28, 28) \
+            .swapaxes(1, 2) \
+            .reshape(samples[0] * 28, samples[1] * 28)
+        cv2.imwrite(f"{name}_samples.png", image)
 
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    train_cnn()
+    # train_cnn()
+    create_data_overview()
