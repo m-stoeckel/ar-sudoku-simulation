@@ -5,6 +5,7 @@ from keras import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tqdm import tqdm
 
+from simulation import CharacterRenderer
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.dataset import CuratedCharactersDataset, RandomPerspectiveTransform, \
     RandomPerspectiveTransformY, FilteredMNIST, MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
@@ -179,7 +180,7 @@ def create_datasets():
     mnist = ClassSeparateMNIST(data_home="datasets/")
 
     # Empty fields
-    empty_dataset = EmptyDataset(10000)
+    empty_dataset = EmptyDataset(28, 5000)
 
     # Concatenate datasets
     concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
@@ -281,6 +282,5 @@ def train_mnist():
 
 
 if __name__ == '__main__':
-    # train_linear()
+    # CharacterRenderer().prerender_all(mode='L')
     train_cnn()
-    # train_mnist()
