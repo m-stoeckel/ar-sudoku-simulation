@@ -240,7 +240,7 @@ class CharacterDataset:
         """
         Induce the alpha for the images in this dataset. The images must be in RGBA format for this to work.
 
-        :param average_color: If True, set the alpha value to the average of all color channels for each pixel (default).
+        :param average_color: If True, set alpha value to the average of all color channels for each pixel (default).
         :type average_color: bool
         :param alpha_zero_value: If given, set the alpha value to zero for this value and to 255 for all others.
         :type alpha_zero_value: int

@@ -5,10 +5,9 @@ from keras import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tqdm import tqdm
 
-from simulation import CharacterRenderer
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.dataset import CuratedCharactersDataset, RandomPerspectiveTransform, \
-    RandomPerspectiveTransformY, FilteredMNIST, MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
+    MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
     PrerenderedCharactersDataset, CharacterDataset, EmptyDataset
 from simulation.image.image_transforms import GaussianNoise, GaussianBlur, EmbedInGrid, Rescale, \
     RescaleIntermediateTransforms
@@ -46,34 +45,24 @@ def get_cnn_model(n_classes=18):
 
 
 def train_linear():
-    batch_size = 128
     print("Loading data..")
-    # Load MNIST dataset, with zeros filtered out
-    mnist_dataset = FilteredMNIST()
-    print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
+    # concat_hand, concat_machine, concat_out = create_datasets()
+    concat_hand, concat_machine, concat_out = load_datasets()
 
-    # Crate large training dataset
-    train_digit_dataset = CuratedCharactersDataset()
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.2))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.25))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransform(0.333))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.2))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.25))
-    train_digit_dataset.add_transforms(RandomPerspectiveTransformY(0.333))
-    train_digit_dataset.apply_transforms(keep=True)
-    print(train_digit_dataset.train_x.shape)
-    train_generator = BalancedDataGenerator(train_digit_dataset, mnist_dataset.train,
-                                            batch_size=batch_size, flatten=True)
+    batch_size = 48
+    train_generator = BalancedDataGenerator(
+        concat_machine.train, concat_hand.train, concat_out.train,
+        batch_size=batch_size,
+        shuffle=True,
+        resolution=28
+    )
 
-    # Create separate, small validation dataset
-    test_digit_dataset = CuratedCharactersDataset()
-    test_digit_dataset.add_transforms(RandomPerspectiveTransform())
-    test_digit_dataset.apply_transforms(keep=True)
-    print(test_digit_dataset.train_x.shape)
-    test_generator = BalancedDataGenerator(test_digit_dataset, mnist_dataset.test,
-                                           batch_size=batch_size, flatten=True)
-
-    assert train_generator.num_classes == test_generator.num_classes
+    test_generator = BalancedDataGenerator(
+        concat_machine.test, concat_hand.test, concat_out.test,
+        batch_size=batch_size,
+        shuffle=True,
+        resolution=28
+    )
 
     steps_per_epoch = len(train_generator)
     validation_steps = len(test_generator)
