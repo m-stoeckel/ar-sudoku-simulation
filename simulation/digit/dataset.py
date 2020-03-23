@@ -581,11 +581,11 @@ class ConcatDataset(CharacterDataset):
 
 class EmptyDataset(CharacterDataset):
     def __init__(self, resolution, size=1000):
-        super().__init__(resolution)
         self.size = size
+        super().__init__(resolution)
 
     def _load(self):
-        data = np.zeros((self.size, self.resolution, self.resolution, 1), dtype=np.uint8)
+        data = np.zeros((self.size, self.resolution, self.resolution), dtype=np.uint8)
         labels = np.full(self.size, CLASS_EMPTY, dtype=int)
         self._split(data, labels)
 
