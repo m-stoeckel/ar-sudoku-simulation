@@ -12,7 +12,7 @@ from simulation.render import Color
 
 
 class CharacterRenderer:
-    char_list = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÄÜÖabcdefghijklmnopqrstuvwxyzäüöß,.-!?(){}[]")
+    char_list = list(u"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-!?(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
         self.render_resolution = get_resolution(render_resolution)
