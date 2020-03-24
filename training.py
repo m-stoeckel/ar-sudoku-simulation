@@ -11,9 +11,9 @@ from tqdm import tqdm
 
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.data_generator import SimpleDataGenerator
-from simulation.digit.dataset import CuratedCharactersDataset, RandomPerspectiveTransform, \
+from simulation.digit.dataset import RandomPerspectiveTransform, \
     MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
-    PrerenderedCharactersDataset, CharacterDataset, EmptyDataset
+    PrerenderedCharactersDataset, CharacterDataset, EmptyDataset, ClassSeparateCuratedCharactersDataset
 from simulation.image.image_transforms import GaussianNoise, GaussianBlur, EmbedInGrid, Rescale, \
     RescaleIntermediateTransforms
 
@@ -210,14 +210,14 @@ def create_datasets():
     prerendered_nondigit_dataset.resize(28)
 
     # Handwritten non-digits
-    curated_out = CuratedCharactersDataset(
+    curated_out = ClassSeparateCuratedCharactersDataset(
         digits_path="datasets/curated/",
         load_chars=non_digit_characters
     )
     curated_out.resize(28)
 
     # Handwritten digits
-    curated_digits = CuratedCharactersDataset(digits_path="datasets/curated/", load_chars=digit_characters)
+    curated_digits = ClassSeparateCuratedCharactersDataset(digits_path="datasets/curated/", load_chars=digit_characters)
     curated_digits.resize(28)
 
     # Mnist digits
@@ -316,12 +316,13 @@ def load_validation():
     #         .swapaxes(1, 2) \
     #         .reshape(len(images) // 9 * 28, 9 * 28)
     # )
+    assert images.shape[0] == labels.shape[0]
     return images, labels
 
 
 def create_data_overview(samples=(20, 20)):
-    concat_hand, concat_machine, concat_out = load_datasets()
-    # concat_hand, concat_machine, concat_out = create_datasets()
+    # concat_hand, concat_machine, concat_out = load_datasets()
+    concat_hand, concat_machine, concat_out = create_datasets()
 
     for dataset, name in [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")]:
         indices = np.arange(dataset.train_x.shape[0])
@@ -343,5 +344,5 @@ def create_data_overview(samples=(20, 20)):
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    # create_data_overview()
+    create_data_overview()
     train_cnn()
