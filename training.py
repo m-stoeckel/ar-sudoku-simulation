@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import cv2
 import h5py
 import keras
@@ -7,6 +10,7 @@ from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tqdm import tqdm
 
 from simulation.digit import BalancedDataGenerator
+from simulation.digit.data_generator import SimpleDataGenerator
 from simulation.digit.dataset import CuratedCharactersDataset, RandomPerspectiveTransform, \
     MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
     PrerenderedCharactersDataset, CharacterDataset, EmptyDataset
@@ -33,13 +37,16 @@ def get_cnn_model(n_classes=18):
     model.add(Conv2D(16, kernel_size=(3, 3),
                      activation='relu',
                      input_shape=(28, 28, 1)))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
     model.add(Conv2D(32, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
+    # model.add(Conv2D(64, (3, 3), activation='relu'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
     return model
@@ -89,15 +96,13 @@ def train_linear():
     train_generator = BalancedDataGenerator(
         concat_machine.train, concat_hand.train, concat_out.train,
         batch_size=batch_size,
-        shuffle=True,
-        resolution=28
+        shuffle=True
     )
 
     test_generator = BalancedDataGenerator(
         concat_machine.test, concat_hand.test, concat_out.test,
         batch_size=batch_size,
-        shuffle=True,
-        resolution=28
+        shuffle=True
     )
 
     steps_per_epoch = len(train_generator)
@@ -125,22 +130,23 @@ def train_linear():
 
 def train_cnn():
     print("Loading data..")
-    concat_hand, concat_machine, concat_out = create_datasets()
-    # concat_hand, concat_machine, concat_out = load_datasets()
+    # concat_hand, concat_machine, concat_out = create_datasets()
+    concat_hand, concat_machine, concat_out = load_datasets()
 
-    batch_size = 48
-    train_generator = BalancedDataGenerator(
+    batch_size = 192
+    train_generator = SimpleDataGenerator(
         concat_machine.train, concat_hand.train, concat_out.train,
         batch_size=batch_size,
         shuffle=True,
-        resolution=28
+        # data_align=1
     )
+    unique, coeffs = np.unique(train_generator.labels, return_counts=True)
+    coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
 
-    test_generator = BalancedDataGenerator(
+    test_generator = SimpleDataGenerator(
         concat_machine.test, concat_hand.test, concat_out.test,
         batch_size=batch_size,
-        shuffle=True,
-        resolution=28
+        shuffle=True
     )
 
     steps_per_epoch = len(train_generator)
@@ -153,19 +159,32 @@ def train_cnn():
         model = get_cnn_model(n_classes=train_generator.num_classes)
 
         print("Compiling model..")
-        model.compile(loss=keras.losses.categorical_crossentropy,
-                      optimizer=keras.optimizers.Adagrad(),
-                      metrics=['accuracy'])
+        model.compile(
+            loss=keras.losses.categorical_crossentropy,
+            optimizer=keras.optimizers.Adagrad(),
+            metrics=[keras.metrics.categorical_accuracy, keras.metrics.top_k_categorical_accuracy],
+            weighted_metrics=["acc"]
+        )
         print(model.summary())
 
         print("Starting training..")
         model.fit_generator(
             train_generator,
             steps_per_epoch=steps_per_epoch,
-            epochs=20,
+            epochs=1,
             validation_data=test_generator,
-            validation_steps=validation_steps
+            validation_steps=validation_steps,
+            use_multiprocessing=True,
+            workers=8,
+            class_weight=coeffs
         )
+
+        evaluate(model)
+
+
+def evaluate(model: Sequential):
+    val_x, val_y = load_validation()
+    print(dict(zip(model.metrics_names, model.evaluate(val_x, val_y))))
 
 
 def create_datasets():
@@ -220,8 +239,12 @@ def create_datasets():
     noise = GaussianNoise()
     blur = GaussianBlur()
     embed = EmbedInGrid()
-    perspective_transform = RandomPerspectiveTransform(0.2)
-    rescale_intermediate_transforms = RescaleIntermediateTransforms((14, 14), [noise, blur])
+    perspective_transform = RandomPerspectiveTransform(0.1, background_color=0)
+    rescale_intermediate_transforms = RescaleIntermediateTransforms(
+        (14, 14),
+        [noise, blur],
+        inter_consecutive=cv2.INTER_NEAREST
+    )
 
     # Apply many transforms to machine digits
     for dataset in [concat_machine]:
@@ -271,8 +294,34 @@ def load_datasets():
     return concat_hand, concat_machine, concat_out
 
 
+def load_validation():
+    labels = []
+    images = []
+    for i in range(10):
+        img_path = Path("/home/manu/Pictures/mock/") / str(i)
+        labels_path = Path("/home/manu/Pictures/mock/") / str(i) / "labels.json"
+        if img_path.exists() and img_path.is_dir() and labels_path.exists():
+            with open(labels_path, 'r', encoding="utf8") as fp:
+                labels.extend(json.load(fp)["labels"])
+            for i in range(81):
+                img = cv2.imread(str(img_path / f"box_{i}.png"), cv2.IMREAD_GRAYSCALE)
+                img = cv2.resize(img, (28, 28), interpolation=cv2.INTER_LANCZOS4)
+                images.append(img)
+
+    images = np.expand_dims(np.array(images, dtype=np.uint8), axis=3)
+    labels = keras.utils.to_categorical(np.array(labels, dtype=int), num_classes=20)
+    # cv2.imwrite(
+    #     f"validation.png",
+    #     images.reshape((len(images) // 9, 9, 28, 28)) \
+    #         .swapaxes(1, 2) \
+    #         .reshape(len(images) // 9 * 28, 9 * 28)
+    # )
+    return images, labels
+
+
 def create_data_overview(samples=(20, 20)):
     concat_hand, concat_machine, concat_out = load_datasets()
+    # concat_hand, concat_machine, concat_out = create_datasets()
 
     for dataset, name in [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")]:
         indices = np.arange(dataset.train_x.shape[0])
@@ -281,10 +330,18 @@ def create_data_overview(samples=(20, 20)):
             .reshape(samples[0], samples[1], 28, 28) \
             .swapaxes(1, 2) \
             .reshape(samples[0] * 28, samples[1] * 28)
-        cv2.imwrite(f"{name}_samples.png", image)
+        cv2.imwrite(f"{name}_train_samples.png", image)
+
+        indices = np.arange(dataset.test_x.shape[0])
+        np.random.shuffle(indices)
+        image = dataset.test_x[indices[:np.prod(samples)]] \
+            .reshape(samples[0], samples[1], 28, 28) \
+            .swapaxes(1, 2) \
+            .reshape(samples[0] * 28, samples[1] * 28)
+        cv2.imwrite(f"{name}_test_samples.png", image)
 
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    # train_cnn()
-    create_data_overview()
+    # create_data_overview()
+    train_cnn()

@@ -57,8 +57,7 @@ class Test(TestCase):
         d = BalancedDataGenerator(
             concat_machine, concat_hand, concat_out,
             batch_size=batch_size,
-            shuffle=True,
-            resolution=28
+            shuffle=True
         )
         img_l = []
         for i in range(batch_size):
