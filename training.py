@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 import h5py
 import keras
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
@@ -179,12 +180,44 @@ def train_cnn():
             class_weight=coeffs
         )
 
+        x, y = train_generator[0]
+        y_true = np.argmax(y, axis=-1)
+        y_pred = model.predict_classes(x)
+        y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+        plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
+
+        x, y = test_generator[0]
+        y_true = np.argmax(y, axis=-1)
+        y_pred = model.predict_classes(x)
+        y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+        plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
+
         evaluate(model)
 
 
 def evaluate(model: Sequential):
-    val_x, val_y = load_validation()
-    print(dict(zip(model.metrics_names, model.evaluate(val_x, val_y))))
+    x, y = load_validation()
+    print(dict(zip(model.metrics_names, model.evaluate(x, y))))
+    y_true = np.argmax(y, axis=-1)
+    y_pred = model.predict_classes(x)
+    y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+    zipped = list(zip(x, y))
+    for idx in range(0, len(zipped), 81):
+        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx}")
+
+
+def plot_9x9_grid(zipped, title):
+    plt.tight_layout(0.1, rect=(0.1, 0.1, 1, 1))
+    fig, axes = plt.subplots(9, 9, figsize=(9, 11))
+    fig.suptitle(title, y=0.99)
+    tuples = iter(zipped)
+    for i in range(9):
+        for j in range(9):
+            img, label = tuples.__next__()
+            axes[i][j].imshow(img.squeeze(), cmap="gray")
+            axes[i][j].axis('off')
+            axes[i][j].set_title(str(label))
+    plt.show()
 
 
 def create_datasets():
@@ -323,26 +356,28 @@ def load_validation():
 def create_data_overview(samples=(20, 20)):
     # concat_hand, concat_machine, concat_out = load_datasets()
     concat_hand, concat_machine, concat_out = create_datasets()
+    concat_all = ConcatDataset([concat_hand, concat_machine, concat_out], delete=False)
 
-    for dataset, name in [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")]:
-        indices = np.arange(dataset.train_x.shape[0])
-        np.random.shuffle(indices)
-        image = dataset.train_x[indices[:np.prod(samples)]] \
-            .reshape(samples[0], samples[1], 28, 28) \
-            .swapaxes(1, 2) \
-            .reshape(samples[0] * 28, samples[1] * 28)
-        cv2.imwrite(f"{name}_train_samples.png", image)
+    indices = np.array(
+        [np.random.choice(concat_all.train_indices_by_number[i], samples[1]) for i in range(samples[0])]
+    ).reshape(-1)
+    image = concat_all.train_x[indices] \
+        .reshape(samples[0], samples[1], 28, 28) \
+        .swapaxes(1, 2) \
+        .reshape(samples[0] * 28, samples[1] * 28)
+    cv2.imwrite(f"train_samples.png", image)
 
-        indices = np.arange(dataset.test_x.shape[0])
-        np.random.shuffle(indices)
-        image = dataset.test_x[indices[:np.prod(samples)]] \
-            .reshape(samples[0], samples[1], 28, 28) \
-            .swapaxes(1, 2) \
-            .reshape(samples[0] * 28, samples[1] * 28)
-        cv2.imwrite(f"{name}_test_samples.png", image)
+    indices = np.array(
+        [np.random.choice(concat_all.test_indices_by_number[i], samples[1]) for i in range(samples[0])]
+    ).reshape(-1)
+    image = concat_all.test_x[indices] \
+        .reshape(samples[0], samples[1], 28, 28) \
+        .swapaxes(1, 2) \
+        .reshape(samples[0] * 28, samples[1] * 28)
+    cv2.imwrite(f"test_samples.png", image)
 
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
     create_data_overview()
-    train_cnn()
+    # train_cnn()
