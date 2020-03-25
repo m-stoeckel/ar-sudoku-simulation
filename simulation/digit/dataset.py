@@ -2,7 +2,7 @@ import os
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Dict
 
 from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
@@ -59,8 +59,8 @@ class CharacterDataset:
         self.test_x: np.ndarray = np.empty(0, dtype=np.uint8)
         self.test_y: np.ndarray = np.empty(0, dtype=int)
 
-        self.train_indices_by_number: List[np.ndarray] = [np.empty(0, dtype=int)]
-        self.test_indices_by_number: List[np.ndarray] = [np.empty(0, dtype=int)]
+        self.train_indices_by_number: Dict[int: np.ndarray] = {0: np.empty(0, dtype=int)}
+        self.test_indices_by_number: Dict[int: np.ndarray] = {0: np.empty(0, dtype=int)}
 
         self.transforms: List[List[ImageTransform]] = list()
 
@@ -75,7 +75,7 @@ class CharacterDataset:
     def __len__(self):
         return self.train_x.shape[0]
 
-    def get_label(self, char: Union[int, str]):
+    def get_label(self, char: int):
         if char_is_valid_number(char):
             return int(chr(char)) + self.digit_offset
         else:
@@ -529,7 +529,7 @@ class PrerenderedDigitDataset(CharacterDataset):
                 digits[i] = cv2.resize(img, (self.resolution, self.resolution), interpolation=interpolation)
             else:
                 digits[i] = img
-            labels[i] = np.floor(i / self.digit_count)
+            labels[i] = 1 + int(np.floor(i / self.digit_count))
 
         self._split(digits, labels)
 
@@ -577,6 +577,9 @@ class ConcatDataset(CharacterDataset):
             test_offset += test_size
             if delete:
                 del d
+
+        self.train_indices_by_number = {i: np.flatnonzero(self.train_y == i) for i in range(0, 20)}
+        self.test_indices_by_number = {i: np.flatnonzero(self.test_y == i) for i in range(0, 20)}
 
 
 class EmptyDataset(CharacterDataset):

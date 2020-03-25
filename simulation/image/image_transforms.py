@@ -237,3 +237,15 @@ class RescaleIntermediateTransforms(Rescale):
 
         cv2.resize(img, orig_size, dst=img, interpolation=self.inter_consecutive)
         return img
+
+
+class Dilate(ImageTransform):
+    def __init__(self, kernel: Union[np.ndarray, int] = 3):
+        if isinstance(kernel, int):
+            self.kernel = np.ones((kernel, kernel))
+        else:
+            self.kernel = kernel
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        cv2.dilate(img, self.kernel, img)
+        return img
