@@ -20,8 +20,8 @@ INTER_UP_HIGH = cv2.INTER_CUBIC
 INTER_UP_FAST = cv2.INTER_LINEAR
 
 # Classmap: {0: OUT, 1..9: #_MACHINE, 10: EMPTY, 11..19: #_HAND}
-CLASS_OUT = 0
-CLASS_EMPTY = 10
+CLASS_OUT = 10
+CLASS_EMPTY = 0
 
 
 def strip_file_ext(path: str):
