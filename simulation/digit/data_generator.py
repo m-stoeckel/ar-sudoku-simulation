@@ -216,7 +216,8 @@ class SimpleDataGenerator(keras.utils.Sequence):
             *datasets: (np.ndarray, np.ndarray),
             batch_size=32,
             shuffle=True,
-            flatten=False
+            flatten=False,
+            to_simple_digit=False
     ):
         """
         TODO: Comment
@@ -240,7 +241,12 @@ class SimpleDataGenerator(keras.utils.Sequence):
         self.flatten = flatten
         self.batch_size = batch_size
 
-        self.num_classes = 20
+        if to_simple_digit:
+            indices = np.logical_and(self.labels > 9, self.labels != 10)
+            self.labels[indices] -= 10
+            self.num_classes = 11
+        else:
+            self.num_classes = 20
 
         self.on_epoch_end()
 

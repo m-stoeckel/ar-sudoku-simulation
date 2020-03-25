@@ -59,7 +59,7 @@ class SingleFontCharacterRenderer(CharacterRenderer):
         self.characters = {}
         self.lookup = []
 
-        # choose font size as 90% of the entire image area
+        # choose font size as 90% of the entire transforms area
         font_size_pt = int(self.render_resolution[1] / 1.3)
         font = ImageFont.truetype(font.value, font_size_pt)
         for char in self.char_list:

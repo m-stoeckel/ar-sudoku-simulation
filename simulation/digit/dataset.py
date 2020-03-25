@@ -2,14 +2,15 @@ import os
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import Iterable, Dict
+from typing import Iterable, Dict, List, Union, Tuple
 
+import cv2
+import numpy as np
 from p_tqdm import p_map
 from sklearn.datasets import fetch_openml
 from tqdm import tqdm, trange
 
-from simulation.image.image_transforms import *
-from simulation.image.image_transforms import ImageTransform
+from simulation.transforms import ImageTransform
 
 DEBUG = False
 
@@ -91,7 +92,17 @@ class CharacterDataset:
         transforms = list(transforms)
         self.transforms.append(transforms)
 
-    def apply_transforms(self, keep=True):
+    def apply_transforms(self, keep=True, clear=True):
+        """
+        Apply all sequences of transforms added previously.
+
+        :param keep: If True, keep the original images in the dataset
+        :type keep: bool
+        :param clear: If True, clear the list of transforms at the end of
+        :type clear: bool
+        :return: None
+        :rtype: None
+        """
         if not self.transforms:
             return
         n_train = self.train_x.shape[0]
@@ -106,7 +117,10 @@ class CharacterDataset:
         if keep:
             new_train_x[:n_train] = self.train_x
             new_test_x[:n_test] = self.test_x
-        for i, transforms in enumerate(tqdm(self.transforms, desc="Applying transforms", position=0), start=int(keep)):
+        for i, transforms in enumerate(
+                tqdm(self.transforms, desc="Applying transforms", position=0, smoothing=0),
+                start=int(keep)
+        ):
             def _apply_transforms(img):
                 for transform in transforms:
                     img = transform.apply(img)
@@ -134,11 +148,14 @@ class CharacterDataset:
         self.train_y = np.tile(self.train_y, int(keep) + n_transforms)
         self.test_y = np.tile(self.test_y, int(keep) + n_transforms)
 
+        if clear:
+            self.transforms.clear()
+
     def resize(self, resolution=28):
         """
         Resize all images in the data set to the given resolution.
 
-        :param resolution: The new image width/height.
+        :param resolution: The new transforms width/height.
         :type resolution: int
         :return: None
         :rtype: None

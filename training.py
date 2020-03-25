@@ -1,7 +1,8 @@
 import json
+import os
+import sys
 from pathlib import Path
 
-import cv2
 import h5py
 import keras
 import matplotlib.pyplot as plt
@@ -12,11 +13,9 @@ from tqdm import tqdm
 
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.data_generator import SimpleDataGenerator
-from simulation.digit.dataset import RandomPerspectiveTransform, \
-    MNIST, np, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
+from simulation.digit.dataset import MNIST, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
     PrerenderedCharactersDataset, CharacterDataset, EmptyDataset, ClassSeparateCuratedCharactersDataset
-from simulation.image.image_transforms import GaussianNoise, GaussianBlur, EmbedInGrid, Rescale, \
-    RescaleIntermediateTransforms
+from simulation.transforms import *
 
 tf.get_logger().setLevel('ERROR')
 
@@ -38,16 +37,16 @@ def get_cnn_model(n_classes=18):
     model.add(Conv2D(16, kernel_size=(3, 3),
                      activation='relu',
                      input_shape=(28, 28, 1)))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Conv2D(32, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
-    # model.add(Conv2D(64, (3, 3), activation='relu'))
-    # model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.25))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
+    model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(64, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
     return model
@@ -129,25 +128,28 @@ def train_linear():
     )
 
 
-def train_cnn():
+def train_cnn(to_simple_digit=True):
     print("Loading data..")
-    # concat_hand, concat_machine, concat_out = create_datasets()
     concat_hand, concat_machine, concat_out = load_datasets()
 
     batch_size = 192
     train_generator = SimpleDataGenerator(
+        # concat_machine.train, concat_hand.train,
         concat_machine.train, concat_hand.train, concat_out.train,
         batch_size=batch_size,
         shuffle=True,
         # data_align=1
+        to_simple_digit=to_simple_digit
     )
     unique, coeffs = np.unique(train_generator.labels, return_counts=True)
     coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
 
     test_generator = SimpleDataGenerator(
+        # concat_machine.test, concat_hand.test,
         concat_machine.test, concat_hand.test, concat_out.test,
         batch_size=batch_size,
-        shuffle=True
+        shuffle=True,
+        to_simple_digit=to_simple_digit
     )
 
     steps_per_epoch = len(train_generator)
@@ -183,33 +185,38 @@ def train_cnn():
         x, y = train_generator[0]
         y_true = np.argmax(y, axis=-1)
         y_pred = model.predict_classes(x)
-        y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+        y = get_labels(y_true, y_pred)
         plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
 
         x, y = test_generator[0]
         y_true = np.argmax(y, axis=-1)
         y_pred = model.predict_classes(x)
-        y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+        y = get_labels(y_true, y_pred)
         plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
 
-        evaluate(model)
+        evaluate(model, to_simple_digit)
 
 
-def evaluate(model: Sequential):
-    x, y = load_validation()
+def get_labels(y_true, y_pred):
+    return ["" if y_pred[i] == y_true[i] else f"{y_pred[i]}/{y_true[i]}" for i in range(y_true.shape[0])]
+
+
+def evaluate(model: Sequential, to_simple_digit=False):
+    print("Evaluating")
+    x, y = load_validation(to_simple_digit)
     print(dict(zip(model.metrics_names, model.evaluate(x, y))))
     y_true = np.argmax(y, axis=-1)
     y_pred = model.predict_classes(x)
-    y = ["" if y_true[i] == y_pred[i] else f"T={y_true[i]}, P={y_pred[i]}" for i in range(y_true.shape[0])]
+    y = get_labels(y_true, y_pred)
     zipped = list(zip(x, y))
     for idx in range(0, len(zipped), 81):
-        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx}")
+        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81}")
 
 
 def plot_9x9_grid(zipped, title):
-    plt.tight_layout(0.1, rect=(0.1, 0.1, 1, 1))
-    fig, axes = plt.subplots(9, 9, figsize=(9, 11))
-    fig.suptitle(title, y=0.99)
+    plt.tight_layout(0.1, rect=(0.2, 0.2, 1, 1))
+    fig, axes = plt.subplots(9, 9, figsize=(9, 12))
+    fig.suptitle(title, y=0.995)
     tuples = iter(zipped)
     for i in range(9):
         for j in range(9):
@@ -221,140 +228,184 @@ def plot_9x9_grid(zipped, title):
 
 
 def create_datasets():
-    digit_characters = "123456789"
-    non_digit_characters = "0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
+    base_names = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset"]
+    if not all(os.path.exists(f"datasets/{name}.hdf5") for name in base_names):
+        digit_characters = "123456789"
+        non_digit_characters = "0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
 
-    # Digit dataset
-    digit_dataset = PrerenderedDigitDataset(digits_path="datasets/digits/")
-    digit_dataset.resize(28)
+        #########################
+        # Machinewritten digits #
+        #########################
 
-    # Prerendered character dataset - digits
-    prerendered_digit_dataset = PrerenderedCharactersDataset(
-        digits_path="datasets/characters/",
-        load_chars=digit_characters
-    )
-    prerendered_digit_dataset.resize(28)
+        # "Digit" dataset
+        digit_dataset = PrerenderedDigitDataset(digits_path="datasets/digits/")
+        digit_dataset.resize(28)
 
-    # Prerendered character dataset - non-digits
-    prerendered_nondigit_dataset = PrerenderedCharactersDataset(
-        digits_path="datasets/characters/",
-        load_chars=non_digit_characters
-    )
-    prerendered_nondigit_dataset.resize(28)
+        # Prerendered character dataset - digits
+        prerendered_digit_dataset = PrerenderedCharactersDataset(
+            digits_path="datasets/characters/",
+            load_chars=digit_characters
+        )
+        prerendered_digit_dataset.resize(28)
 
-    # Handwritten non-digits
-    curated_out = ClassSeparateCuratedCharactersDataset(
-        digits_path="datasets/curated/",
-        load_chars=non_digit_characters
-    )
-    curated_out.resize(28)
+        ######################
+        # Handwritten digits #
+        ######################
 
-    # Handwritten digits
-    curated_digits = ClassSeparateCuratedCharactersDataset(digits_path="datasets/curated/", load_chars=digit_characters)
-    curated_digits.resize(28)
+        # Curated digits
+        curated_digits = ClassSeparateCuratedCharactersDataset(digits_path="datasets/curated/",
+                                                               load_chars=digit_characters)
+        curated_digits.resize(28)
 
-    # Mnist digits
-    mnist = ClassSeparateMNIST(data_home="datasets/")
+        # Mnist digits
+        mnist = ClassSeparateMNIST(data_home="datasets/")
 
-    # Empty fields
-    empty_dataset = EmptyDataset(28, 5000)
+        ##############
+        # Non-digits #
+        ##############
 
-    # Concatenate datasets
-    concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
-    concat_hand = ConcatDataset([mnist, curated_digits])
-    concat_out = ConcatDataset([curated_out, prerendered_nondigit_dataset, empty_dataset])
+        # Prerendered non-digits
+        prerendered_nondigit_dataset = PrerenderedCharactersDataset(
+            digits_path="datasets/characters/",
+            load_chars=non_digit_characters
+        )
+        prerendered_nondigit_dataset.resize(28)
 
-    # Remove old datasets, as concatenation creates a copy of all images
-    del digit_dataset, prerendered_digit_dataset, mnist, curated_digits, curated_out, prerendered_nondigit_dataset, \
-        empty_dataset
+        # Curated non-digits
+        curated_out = ClassSeparateCuratedCharactersDataset(
+            digits_path="datasets/curated/",
+            load_chars=non_digit_characters
+        )
+        curated_out.resize(28)
+
+        # Empty fields
+        empty_dataset = EmptyDataset(28, 5000)
+
+        # Concatenate datasets
+        concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
+        concat_hand = ConcatDataset([mnist, curated_digits])
+        # concat_out = ConcatDataset([curated_out, prerendered_nondigit_dataset, empty_dataset])
+        # concat_out = ConcatDataset([curated_out, empty_dataset])
+        concat_out = ConcatDataset([empty_dataset])
+
+        # Save base datasets for later
+        save_datsets([(concat_machine, "base_machine_dataset"), (concat_hand, "base_hand_dataset"),
+                      (concat_out, "base_out_dataset")])
+
+        # Remove old datasets, as concatenation creates a copy of all images
+        del digit_dataset, prerendered_digit_dataset, mnist, curated_digits, empty_dataset,\
+            curated_out, prerendered_nondigit_dataset
+    else:
+        concat_hand, concat_machine, concat_out = load_datasets(base_names)
 
     # Transforms
     noise = GaussianNoise()
+    sup = SaltAndPepperNoise()
+    poisson = PoissonNoise()
     blur = GaussianBlur()
-    embed = EmbedInGrid()
     perspective_transform = RandomPerspectiveTransform(0.1, background_color=0)
     rescale_intermediate_transforms = RescaleIntermediateTransforms(
         (14, 14),
-        [noise, blur],
+        [perspective_transform],
         inter_consecutive=cv2.INTER_NEAREST
     )
 
     # Apply many transforms to machine digits
     for dataset in [concat_machine]:
-        dataset.add_transforms(noise, blur)
-        dataset.add_transforms(noise, perspective_transform, blur)
-        dataset.add_transforms(embed, perspective_transform)
-        dataset.add_transforms(embed, noise, perspective_transform, blur)
-        dataset.add_transforms(embed, noise, blur)
-        dataset.add_transforms(embed, rescale_intermediate_transforms)
-        dataset.add_transforms(embed, noise, Rescale((14, 14)), blur)
+        dataset.add_transforms(EmbedInGrid())
+        dataset.add_transforms(EmbedInGrid(), SaltAndPepperNoise(amount=0.01, ratio=1), Dilate(), blur)
         dataset.apply_transforms()
+
+        dataset.add_transforms(poisson)
+        dataset.add_transforms(Dilate())
+        dataset.apply_transforms()
+
+        dataset.add_transforms(noise)
+        dataset.add_transforms(perspective_transform, blur)
+        dataset.add_transforms(rescale_intermediate_transforms)
+        dataset.apply_transforms(keep=False)
 
     # Apply some transforms to other digits
     for dataset in [concat_hand, concat_out]:
-        dataset.add_transforms(embed, noise, blur)
-        dataset.add_transforms(embed, rescale_intermediate_transforms)
-        dataset.add_transforms(noise, perspective_transform, blur)
+        dataset.add_transforms(EmbedInGrid(), SaltAndPepperNoise(amount=0.01, ratio=1), Dilate(), blur)
+        dataset.add_transforms(EmbedInGrid(), noise)
         dataset.apply_transforms()
 
-    for dataset, name in tqdm(
-            [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")],
-            desc="Writing datasets to file"
-    ):
-        with h5py.File(f"datasets/{name}_dataset.hdf5", "w") as f:
+        dataset.add_transforms(perspective_transform, blur)
+        dataset.add_transforms(rescale_intermediate_transforms)
+        dataset.add_transforms(Dilate())
+        dataset.apply_transforms(keep=False)
+
+    save_datsets([(concat_machine, "concat_machine_dataset"), (concat_hand, "concat_hand_dataset"),
+                  (concat_out, "concat_out_dataset")])
+    return concat_hand, concat_machine, concat_out
+
+
+def save_datsets(iterable):
+    for dataset, name in tqdm(iterable, desc="Writing datasets to file"):
+        with h5py.File(f"datasets/{name}.hdf5", "w") as f:
             f.create_dataset("train_x", data=dataset.train_x)
             f.create_dataset("train_y", data=dataset.train_y)
             f.create_dataset("test_x", data=dataset.test_x)
             f.create_dataset("test_y", data=dataset.test_y)
-    return concat_hand, concat_machine, concat_out
 
 
-def load_datasets():
-    concat_machine = CharacterDataset(28)
-    concat_hand = CharacterDataset(28)
-    concat_out = CharacterDataset(28)
+def load_datasets(file_names=None):
+    if file_names is None:
+        file_names = ["concat_machine_dataset", "concat_hand_dataset", "concat_out_dataset"]
 
-    for dataset, name in tqdm(
-            [(concat_machine, "concat_machine"), (concat_hand, "concat_hand"), (concat_out, "concat_out")],
-            desc="Loading datasets from file"
-    ):
-        with h5py.File(f"datasets/{name}_dataset.hdf5", "r") as f:
+    machine = CharacterDataset(28)
+    hand = CharacterDataset(28)
+    out = CharacterDataset(28)
+
+    for dataset, name in tqdm(zip([machine, hand, out], file_names), desc="Loading datasets from file"):
+        with h5py.File(f"datasets/{name}.hdf5", "r") as f:
             dataset.train_x = f["train_x"][:]
             dataset.train_y = f["train_y"][:]
             dataset.test_x = f["test_x"][:]
             dataset.test_y = f["test_y"][:]
 
-    return concat_hand, concat_machine, concat_out
+    return hand, machine, out
 
 
-def load_validation():
+def load_validation(to_simple_digit=False):
     labels = []
     images = []
     for i in range(10):
-        img_path = Path("/home/manu/Pictures/mock/") / str(i)
-        labels_path = Path("/home/manu/Pictures/mock/") / str(i) / "labels.json"
-        if img_path.exists() and img_path.is_dir() and labels_path.exists():
+        base_path = Path("datasets/validation/") / str(i)
+        labels_path = base_path / "labels.json"
+        if base_path.exists() and base_path.is_dir() and labels_path.exists():
             with open(labels_path, 'r', encoding="utf8") as fp:
-                labels.extend(json.load(fp)["labels"])
+                _labels = json.load(fp)["labels"]
+                if len(_labels) != 81:
+                    print(f"{labels_path}: len={len(labels)}", file=sys.stderr)
+                    continue
+                labels.extend(_labels)
             for i in range(81):
-                img = cv2.imread(str(img_path / f"box_{i}.png"), cv2.IMREAD_GRAYSCALE)
+                img_path = base_path / f"box_{i}.png"
+                if not img_path.exists():
+                    print(f"{img_path} does not exist", file=sys.stderr)
+                    raise RuntimeError
+                img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
                 img = cv2.resize(img, (28, 28), interpolation=cv2.INTER_LANCZOS4)
                 images.append(img)
 
     images = np.expand_dims(np.array(images, dtype=np.uint8), axis=3)
-    labels = keras.utils.to_categorical(np.array(labels, dtype=int), num_classes=20)
-    # cv2.imwrite(
-    #     f"validation.png",
-    #     images.reshape((len(images) // 9, 9, 28, 28)) \
-    #         .swapaxes(1, 2) \
-    #         .reshape(len(images) // 9 * 28, 9 * 28)
-    # )
+    labels = np.array(labels, dtype=int)
     assert images.shape[0] == labels.shape[0]
+
+    num_classes = 20
+    if to_simple_digit:
+        indices = np.logical_and(labels > 9, labels != 10)
+        labels[indices] -= 10
+        num_classes = 11
+
+    labels = keras.utils.to_categorical(labels, num_classes=num_classes)
+
     return images, labels
 
 
 def create_data_overview(samples=(20, 20)):
-    # concat_hand, concat_machine, concat_out = load_datasets()
     concat_hand, concat_machine, concat_out = create_datasets()
     concat_all = ConcatDataset([concat_hand, concat_machine, concat_out], delete=False)
 
@@ -380,4 +431,4 @@ def create_data_overview(samples=(20, 20)):
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
     create_data_overview()
-    # train_cnn()
+    train_cnn()

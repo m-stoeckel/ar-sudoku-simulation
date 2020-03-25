@@ -4,8 +4,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from simulation.image import GaussianNoise, RandomPerspectiveTransform, GaussianBlur
-from simulation.image.image_transforms import EmbedInGrid
+from simulation.transforms import GaussianNoise, RandomPerspectiveTransform, GaussianBlur, EmbedInGrid
 
 
 class ImageTransformTests(TestCase):

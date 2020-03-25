@@ -1,4 +1,4 @@
 from .digit import *
-from .image import *
+from .transforms import *
 from .sudoku import *
 from .tests import *
