@@ -24,7 +24,7 @@ class UniformNoise(ImageTransform):
 
 
 class GaussianNoise(ImageTransform):
-    def __init__(self, mu=0, sigma=8):
+    def __init__(self, mu=0, sigma=4):
         super().__init__()
         self.mu = mu
         self.sigma = sigma
