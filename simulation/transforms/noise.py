@@ -12,13 +12,11 @@ class UniformNoise(ImageTransform):
         self.high = high
 
     def noise(self, size):
-        ret = np.zeros(size, np.uint8)
-        cv2.randu(ret, self.low, self.high)
-        return ret
+        return np.random.uniform(self.low, self.high, size)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         noise = self.noise(img.shape)
-        img += noise
+        img = img.astype(np.float) + noise
         img = np.clip(img, 0, 255)
         return img
 
@@ -30,13 +28,11 @@ class GaussianNoise(ImageTransform):
         self.sigma = sigma
 
     def noise(self, size):
-        ret = np.zeros(size, np.uint8)
-        cv2.randn(ret, self.mu, self.sigma)
-        return ret
+        return np.random.normal(self.mu, self.sigma, size)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         noise = self.noise(img.shape)
-        img += noise
+        img = img.astype(np.float) + noise
         img = np.clip(img, 0, 255)
         return img.astype(np.uint8)
 
@@ -53,7 +49,6 @@ class SpeckleNoise(GaussianNoise):
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         noise = self.noise(img.shape)
-        noise = noise.astype(np.float) / 255.
         img = img.astype(np.float) / 255.
         img = img * noise * 255
         img = np.clip(img, 0, 255)
@@ -93,6 +88,7 @@ class SaltAndPepperNoise(ImageTransform):
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         # Salt mode
+        img = img.copy()
         num_salt = int(np.ceil(self.amount * img.size * self.ratio))
         indices = (np.random.choice(np.arange(img.shape[0]), num_salt),
                    np.random.choice(np.arange(img.shape[1]), num_salt))
@@ -138,3 +134,14 @@ class EmbedInGrid(ImageTransform):
         offset_x = np.random.randint(0, offset[0])
         offset_y = np.random.randint(0, offset[1])
         return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]
+
+
+class JPEGEncode(ImageTransform):
+    def __init__(self, quality=80):
+        self.quality = quality
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
+        result, encimg = cv2.imencode('.jpg', img, encode_param)
+        decimg = cv2.imdecode(encimg, cv2.IMREAD_GRAYSCALE)
+        return decimg
