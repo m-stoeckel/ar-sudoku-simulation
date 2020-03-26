@@ -165,8 +165,7 @@ def train_cnn(to_simple_digit=True):
         model.compile(
             loss=keras.losses.categorical_crossentropy,
             optimizer=keras.optimizers.Adagrad(),
-            metrics=[keras.metrics.categorical_accuracy, keras.metrics.top_k_categorical_accuracy],
-            weighted_metrics=["acc"]
+            metrics=[keras.metrics.accuracy, keras.metrics.categorical_accuracy],
         )
         print(model.summary())
 
@@ -174,7 +173,7 @@ def train_cnn(to_simple_digit=True):
         model.fit_generator(
             train_generator,
             steps_per_epoch=steps_per_epoch,
-            epochs=1,
+            epochs=10,
             validation_data=test_generator,
             validation_steps=validation_steps,
             use_multiprocessing=True,
@@ -293,56 +292,67 @@ def create_datasets():
                       (concat_out, "base_out_dataset")])
 
         # Remove old datasets, as concatenation creates a copy of all images
-        del digit_dataset, prerendered_digit_dataset, mnist, curated_digits, empty_dataset,\
+        del digit_dataset, prerendered_digit_dataset, mnist, curated_digits, empty_dataset, \
             curated_out, prerendered_nondigit_dataset
     else:
         concat_hand, concat_machine, concat_out = load_datasets(base_names)
 
     # Transforms
-    noise = GaussianNoise()
-    sup = SaltAndPepperNoise()
-    poisson = PoissonNoise()
-    blur = GaussianBlur()
     perspective_transform = RandomPerspectiveTransform(0.1, background_color=0)
-    rescale_intermediate_transforms = RescaleIntermediateTransforms(
+    downscale_intermediate_transforms = RescaleIntermediateTransforms(
         (14, 14),
         [perspective_transform],
         inter_consecutive=cv2.INTER_NEAREST
     )
+    upscale_and_salt = RescaleIntermediateTransforms(
+        (92, 92),
+        [SaltAndPepperNoise(amount=0.002, ratio=1), Dilate()],
+        inter_initial=cv2.INTER_LINEAR, inter_consecutive=cv2.INTER_AREA
+    )
 
     # Apply many transforms to machine digits
+    print("Applying transforms to machine digits")
     for dataset in [concat_machine]:
         dataset.add_transforms(EmbedInGrid())
-        dataset.add_transforms(EmbedInGrid(), SaltAndPepperNoise(amount=0.01, ratio=1), Dilate(), blur)
         dataset.apply_transforms()
 
-        dataset.add_transforms(poisson)
-        dataset.add_transforms(Dilate())
+        dataset.add_transforms(PoissonNoise())
+        dataset.add_transforms(upscale_and_salt)
+        dataset.add_transforms(GrainNoise())
+        dataset.add_transforms(GaussianNoise())
         dataset.apply_transforms()
 
-        dataset.add_transforms(noise)
-        dataset.add_transforms(perspective_transform, blur)
-        dataset.add_transforms(rescale_intermediate_transforms)
-        dataset.apply_transforms(keep=False)
+        dataset.add_transforms(perspective_transform)
+        dataset.add_transforms(downscale_intermediate_transforms)
+        dataset.add_transforms(JPEGEncode())
+        dataset.apply_transforms()
 
     # Apply some transforms to other digits
-    for dataset in [concat_hand, concat_out]:
-        dataset.add_transforms(EmbedInGrid(), SaltAndPepperNoise(amount=0.01, ratio=1), Dilate(), blur)
-        dataset.add_transforms(EmbedInGrid(), noise)
+    print("Applying transforms to handwritten digits")
+    for dataset in [concat_hand, ]:
+        dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
+        dataset.add_transforms(PoissonNoise(), perspective_transform)
+        dataset.add_transforms(EmbedInGrid(), GrainNoise())
+        dataset.add_transforms(JPEGEncode())
         dataset.apply_transforms()
 
-        dataset.add_transforms(perspective_transform, blur)
-        dataset.add_transforms(rescale_intermediate_transforms)
-        dataset.add_transforms(Dilate())
-        dataset.apply_transforms(keep=False)
+    print("Applying transforms to out characters")
+    for dataset in [concat_out]:
+        dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
+        dataset.add_transforms(EmbedInGrid(), PoissonNoise(), perspective_transform)
+        dataset.add_transforms(EmbedInGrid(), GrainNoise())
+        dataset.apply_transforms()
 
-    save_datsets([(concat_machine, "concat_machine_dataset"), (concat_hand, "concat_hand_dataset"),
-                  (concat_out, "concat_out_dataset")])
+        dataset.add_transforms(JPEGEncode())
+        dataset.apply_transforms()
+
+    save_datsets(list(zip([concat_machine, concat_hand, concat_out],
+                          ["concat_machine_dataset", "concat_hand_dataset", "concat_out_dataset"])))
     return concat_hand, concat_machine, concat_out
 
 
-def save_datsets(iterable):
-    for dataset, name in tqdm(iterable, desc="Writing datasets to file"):
+def save_datsets(datasets):
+    for dataset, name in tqdm(datasets, desc="Writing datasets to file"):
         with h5py.File(f"datasets/{name}.hdf5", "w") as f:
             f.create_dataset("train_x", data=dataset.train_x)
             f.create_dataset("train_y", data=dataset.train_y)
@@ -358,7 +368,7 @@ def load_datasets(file_names=None):
     hand = CharacterDataset(28)
     out = CharacterDataset(28)
 
-    for dataset, name in tqdm(zip([machine, hand, out], file_names), desc="Loading datasets from file"):
+    for dataset, name in tqdm(zip([machine, hand, out], file_names), desc="Loading datasets from file", total=3):
         with h5py.File(f"datasets/{name}.hdf5", "r") as f:
             dataset.train_x = f["train_x"][:]
             dataset.train_y = f["train_y"][:]
@@ -406,29 +416,36 @@ def load_validation(to_simple_digit=False):
 
 
 def create_data_overview(samples=(20, 20)):
-    concat_hand, concat_machine, concat_out = create_datasets()
+    concat_hand, concat_machine, concat_out = load_datasets()
     concat_all = ConcatDataset([concat_hand, concat_machine, concat_out], delete=False)
 
+    non_zero_classes = set()
+    for i in range(samples[0]):
+        if concat_all.train_indices_by_number[i].size > 0: non_zero_classes.add(i)
     indices = np.array(
-        [np.random.choice(concat_all.train_indices_by_number[i], samples[1]) for i in range(samples[0])]
+        [np.random.choice(concat_all.train_indices_by_number[i], samples[1]) for i in non_zero_classes]
     ).reshape(-1)
     image = concat_all.train_x[indices] \
-        .reshape(samples[0], samples[1], 28, 28) \
+        .reshape(len(non_zero_classes), samples[1], 28, 28) \
         .swapaxes(1, 2) \
-        .reshape(samples[0] * 28, samples[1] * 28)
+        .reshape(len(non_zero_classes) * 28, samples[1] * 28)
     cv2.imwrite(f"train_samples.png", image)
 
+    non_zero_classes = set()
+    for i in range(samples[0]):
+        if concat_all.test_indices_by_number[i].size > 0: non_zero_classes.add(i)
     indices = np.array(
-        [np.random.choice(concat_all.test_indices_by_number[i], samples[1]) for i in range(samples[0])]
+        [np.random.choice(concat_all.test_indices_by_number[i], samples[1]) for i in non_zero_classes]
     ).reshape(-1)
     image = concat_all.test_x[indices] \
-        .reshape(samples[0], samples[1], 28, 28) \
+        .reshape(len(non_zero_classes), samples[1], 28, 28) \
         .swapaxes(1, 2) \
-        .reshape(samples[0] * 28, samples[1] * 28)
+        .reshape(len(non_zero_classes) * 28, samples[1] * 28)
     cv2.imwrite(f"test_samples.png", image)
 
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
+    # create_datasets()
     create_data_overview()
     train_cnn()
