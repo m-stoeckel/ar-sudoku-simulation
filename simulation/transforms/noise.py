@@ -93,14 +93,16 @@ class SaltAndPepperNoise(ImageTransform):
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         # Salt mode
-        num_salt = np.ceil(self.amount * img.size * self.ratio)
-        coords = np.array([np.random.randint(0, i - 1, int(num_salt)) for i in img.shape]).transpose()
-        img[coords] = 255
+        num_salt = int(np.ceil(self.amount * img.size * self.ratio))
+        indices = (np.random.choice(np.arange(img.shape[0]), num_salt),
+                   np.random.choice(np.arange(img.shape[1]), num_salt))
+        img[indices] = 255
 
         # Pepper mode
-        num_pepper = np.ceil(self.amount * img.size * (1. - self.ratio))
-        coords = np.array([np.random.randint(0, i - 1, int(num_pepper)) for i in img.shape]).transpose()
-        img[coords] = 0
+        num_pepper = int(np.ceil(self.amount * img.size * (1. - self.ratio)))
+        indices = (np.random.choice(np.arange(img.shape[0]), num_pepper),
+                   np.random.choice(np.arange(img.shape[1]), num_pepper))
+        img[indices] = 0
         return img
 
 
