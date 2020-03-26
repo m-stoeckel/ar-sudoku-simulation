@@ -1,3 +1,5 @@
+from typing import *
+
 import cv2
 import numpy as np
 
@@ -5,29 +7,39 @@ from simulation.transforms.base import ImageTransform
 
 
 class RandomPerspectiveTransform(ImageTransform):
-    """
-    Applies a homographic perspective transform to images.
-    The transforms is mapped from its original space to a narrowed space.
-    """
     flags = cv2.INTER_LINEAR
 
-    def __init__(self, max_shift=0.25, background_color=0):
+    def __init__(self, max_shift=0.25, background_color: int = 0):
+        """
+        Applies a homographic perspective transform to images.
+        The transforms is mapped from its original space to a narrowed space.
+
+        :param max_shift: The maximum amount of shift on either axis.
+        :type max_shift: float
+        :param background_color: The background color to fill in. If None, cv2.BORDER_REPLICATE will be used.
+        :type background_color: int
+        """
         super().__init__()
         self.max_shift = max_shift
         self.bg = background_color
         self.bg_mode = cv2.BORDER_REPLICATE if self.bg is None else cv2.BORDER_CONSTANT
 
     def apply(self, img: np.ndarray) -> np.ndarray:
-        mat = self.get_transform_matrix(img)
+        mat = self.get_transform_matrix(img.shape)
         img = cv2.warpPerspective(img, mat, img.shape[:2], flags=self.flags,
                                   borderMode=self.bg_mode, borderValue=self.bg)
         return img
 
-    def get_transform_matrix(self, img):
+    def get_transform_matrix(self, shape):
         """
         Compute the homographic matrix H.
+
+        :param shape: The shape of the image to transform.
+        :type shape: Tuple[int, int]
+        :return: The 3x3 perspective transform matrix.
+        :rtype:
         """
-        x_dim, y_dim = img.shape[:2]
+        x_dim, y_dim = shape[:2]
         x_dim, y_dim = x_dim - 1, y_dim - 1
         x_pos = self.get_x_displacement(x_dim)
         y_pos = self.get_y_displacement(y_dim)
@@ -75,7 +87,18 @@ class RandomPerspectiveTransformY(RandomPerspectiveTransform):
 
 
 class LensDistortion(ImageTransform):
-    def __init__(self, focal_lengths=None, dist_coeffs=None, principal_point=None):
+    def __init__(self, focal_lengths: Tuple[float, float] = None, dist_coeffs: Iterable[float] = None,
+                 principal_point: Tuple[int, int] = None):
+        """
+        Applies lens distortion.
+
+        :param focal_lengths: The focal lengths of the simulated lens. Default: [500, 500].
+        :type focal_lengths: Tuple[float, float]
+        :param dist_coeffs: The distance coefficients of the simulated lens. Default: [0,0,0,0].
+        :type dist_coeffs: Iterable[float]
+        :param principal_point: The principal point of the camera. If None, the center of each image will be used.
+        :type principal_point: Tuple[int, int]
+        """
         super().__init__()
         self.dist_coeffs = np.array([0, 0, 0, 0]) if dist_coeffs is None else dist_coeffs
 

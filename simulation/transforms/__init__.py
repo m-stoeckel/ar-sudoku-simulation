@@ -1,5 +1,5 @@
 from .base import *
-from .blur import *
+from .filter import *
 from .noise import *
 from .perspective import *
 from .scale import *
