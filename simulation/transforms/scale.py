@@ -30,8 +30,8 @@ class Rescale(ImageTransform):
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         orig_size = tuple(img.shape[:2])
-        cv2.resize(img, self.size, dst=img, interpolation=self.inter_initial)
-        cv2.resize(img, orig_size, dst=img, interpolation=self.inter_consecutive)
+        img = cv2.resize(img, self.size, interpolation=self.inter_initial)
+        img = cv2.resize(img, orig_size, interpolation=self.inter_consecutive)
         return img
 
 
@@ -64,11 +64,11 @@ class RescaleIntermediateTransforms(Rescale):
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         orig_size = tuple(img.shape[:2])
-        cv2.resize(img, self.size, dst=img, interpolation=self.inter_initial)
+        img = cv2.resize(img, self.size, interpolation=self.inter_initial)
 
         # Apply intermediate transforms
         for transform in self.intermediate_transforms:
             img = transform.apply(img)
 
-        cv2.resize(img, orig_size, dst=img, interpolation=self.inter_consecutive)
+        img = cv2.resize(img, orig_size, interpolation=self.inter_consecutive)
         return img
