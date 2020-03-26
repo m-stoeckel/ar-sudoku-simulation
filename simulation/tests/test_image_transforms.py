@@ -6,7 +6,9 @@ from simulation.transforms import *
 
 
 class ImageTransformTests(TestCase):
-    digit = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
+    def setUp(self):
+        self.digit = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
+        self.digit = cv2.resize(self.digit, (28, 28))
 
     def test_with_sudoku(self):
         img = cv2.imread("../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
@@ -27,6 +29,10 @@ class ImageTransformTests(TestCase):
         transform = GaussianBlur()
         self.apply_transform(transform)
 
+    def test_BoxBlur(self):
+        transform = BoxBlur()
+        self.apply_transform(transform)
+
     def test_GaussianNoise(self):
         transform = GaussianNoise()
         self.apply_transform(transform)
@@ -35,8 +41,16 @@ class ImageTransformTests(TestCase):
         transform = PoissonNoise()
         self.apply_transform(transform)
 
+    def test_UniformNoise(self):
+        transform = UniformNoise()
+        self.apply_transform(transform)
+
     def test_SaltAndPepperNoise(self):
         transform = SaltAndPepperNoise()
+        self.apply_transform(transform)
+
+    def test_GrainNoise(self):
+        transform = GrainNoise()
         self.apply_transform(transform)
 
     def test_SpeckleNoise(self):
@@ -56,7 +70,7 @@ class ImageTransformTests(TestCase):
         self.apply_transform(transform)
 
     def test_UnsharpMaskingFilter(self):
-        transform = UnsharpMaskingFilter()
+        transform = UnsharpMaskingFilter3x3()
         self.apply_transform(transform)
 
     def test_RandomPerspectiveTransform(self):
@@ -67,9 +81,28 @@ class ImageTransformTests(TestCase):
         transform = JPEGEncode()
         self.apply_transform(transform)
 
+    def test_Dilate(self):
+        transform = Dilate()
+        self.apply_transform(transform)
+
+    def test_Dilate2(self):
+        b_digit = self.digit.copy()
+        self.digit = SaltAndPepperNoise().apply(self.digit)
+        transform = Dilate()
+        self.apply_transform(transform)
+        self.digit = b_digit
+
+    def test_RescaleIntermediateTransforms(self):
+        transform = RescaleIntermediateTransforms(
+            (92, 92),
+            [SaltAndPepperNoise(amount=0.002, ratio=1), Dilate()],
+            inter_initial=cv2.INTER_LINEAR, inter_consecutive=cv2.INTER_AREA
+        )
+        self.apply_transform(transform)
+
     def apply_transform(self, transform):
         tdigit = transform.apply(self.digit)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2,1))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
         fig.suptitle(transform.__class__.__name__, fontsize='8')
         ax1.axis('off')
         ax2.axis('off')
