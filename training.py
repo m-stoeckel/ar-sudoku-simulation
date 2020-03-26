@@ -13,217 +13,11 @@ from tqdm import tqdm
 
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.data_generator import SimpleDataGenerator
-from simulation.digit.dataset import MNIST, PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
+from simulation.digit.dataset import PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
     PrerenderedCharactersDataset, CharacterDataset, EmptyDataset, ClassSeparateCuratedCharactersDataset
 from simulation.transforms import *
 
 tf.get_logger().setLevel('ERROR')
-
-
-# SGD or Adam work well
-def get_linear_model(n_classes=18):
-    model = Sequential()
-    model.add(Dense(128, activation='relu', input_shape=(28 ** 2,)))
-    model.add(Dropout(0.2))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(n_classes, activation='softmax'))
-    return model
-
-
-# Adadelta or Adagrad work well
-def get_cnn_model(n_classes=18):
-    model = Sequential()
-    model.add(Conv2D(16, kernel_size=(3, 3),
-                     activation='relu',
-                     input_shape=(28, 28, 1)))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-    model.add(Conv2D(32, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Dropout(0.25))
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.25))
-    model.add(Dense(n_classes, activation='softmax'))
-    return model
-
-
-def train_mnist():
-    batch_size = 64
-    print("Loading data..")
-    mnist_dataset = MNIST()
-    print(mnist_dataset.train_x.shape, mnist_dataset.test_x.shape)
-
-    # Convert native MNIST to trainable format
-    train_x = mnist_dataset.train_x.astype(np.float32)
-    train_x = train_x[:, :, :, np.newaxis]
-    train_x /= 255.
-    train_y = keras.utils.to_categorical(mnist_dataset.train_y, num_classes=10)
-
-    test_x = mnist_dataset.test_x.astype(np.float32)
-    test_x = test_x[:, :, :, np.newaxis]
-    test_x /= 255.
-    test_y = keras.utils.to_categorical(mnist_dataset.test_y, num_classes=10)
-
-    # Keras Model
-    print("Creating model..")
-    model = get_cnn_model(n_classes=10)
-
-    print("Compiling model..")
-    model.compile(loss=keras.losses.categorical_crossentropy,
-                  optimizer=keras.optimizers.Adagrad(),
-                  metrics=['accuracy'])
-    print(model.summary())
-
-    print("Starting training..")
-    model.fit(
-        train_x, train_y,
-        epochs=10, batch_size=batch_size,
-        validation_data=(test_x, test_y)
-    )
-
-
-def train_linear():
-    print("Loading data..")
-    # concat_hand, concat_machine, concat_out = create_datasets()
-    concat_hand, concat_machine, concat_out = load_datasets()
-
-    batch_size = 48
-    train_generator = BalancedDataGenerator(
-        concat_machine.train, concat_hand.train, concat_out.train,
-        batch_size=batch_size,
-        shuffle=True
-    )
-
-    test_generator = BalancedDataGenerator(
-        concat_machine.test, concat_hand.test, concat_out.test,
-        batch_size=batch_size,
-        shuffle=True
-    )
-
-    steps_per_epoch = len(train_generator)
-    validation_steps = len(test_generator)
-
-    # Keras Model
-    print("Creating model..")
-    model = get_linear_model(n_classes=train_generator.num_classes)
-
-    print("Compiling model..")
-    model.compile(loss=keras.losses.categorical_crossentropy,
-                  optimizer=keras.optimizers.Adam(),
-                  metrics=['accuracy'])
-    print(model.summary())
-
-    print("Starting training..")
-    model.fit_generator(
-        train_generator,
-        steps_per_epoch=steps_per_epoch,
-        epochs=20,
-        validation_data=test_generator,
-        validation_steps=validation_steps
-    )
-
-
-def train_cnn(to_simple_digit=True):
-    print("Loading data..")
-    concat_hand, concat_machine, concat_out = load_datasets()
-
-    batch_size = 192
-    train_generator = SimpleDataGenerator(
-        # concat_machine.train, concat_hand.train,
-        concat_machine.train, concat_hand.train, concat_out.train,
-        batch_size=batch_size,
-        shuffle=True,
-        # data_align=1
-        to_simple_digit=to_simple_digit
-    )
-    unique, coeffs = np.unique(train_generator.labels, return_counts=True)
-    coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
-
-    test_generator = SimpleDataGenerator(
-        # concat_machine.test, concat_hand.test,
-        concat_machine.test, concat_hand.test, concat_out.test,
-        batch_size=batch_size,
-        shuffle=True,
-        to_simple_digit=to_simple_digit
-    )
-
-    steps_per_epoch = len(train_generator)
-    validation_steps = len(test_generator)
-
-    # Run training on the GPU
-    with tf.device('/GPU:0'):
-        # Keras Model
-        print("Creating model..")
-        model = get_cnn_model(n_classes=train_generator.num_classes)
-
-        print("Compiling model..")
-        model.compile(
-            loss=keras.losses.categorical_crossentropy,
-            optimizer=keras.optimizers.Adagrad(),
-            metrics=[keras.metrics.accuracy, keras.metrics.categorical_accuracy],
-        )
-        print(model.summary())
-
-        print("Starting training..")
-        model.fit_generator(
-            train_generator,
-            steps_per_epoch=steps_per_epoch,
-            epochs=10,
-            validation_data=test_generator,
-            validation_steps=validation_steps,
-            use_multiprocessing=True,
-            workers=8,
-            class_weight=coeffs
-        )
-
-        x, y = train_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
-
-        x, y = test_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
-
-        evaluate(model, to_simple_digit)
-
-
-def get_labels(y_true, y_pred):
-    return ["" if y_pred[i] == y_true[i] else f"{y_pred[i]}/{y_true[i]}" for i in range(y_true.shape[0])]
-
-
-def evaluate(model: Sequential, to_simple_digit=False):
-    print("Evaluating")
-    x, y = load_validation(to_simple_digit)
-    print(dict(zip(model.metrics_names, model.evaluate(x, y))))
-    y_true = np.argmax(y, axis=-1)
-    y_pred = model.predict_classes(x)
-    y = get_labels(y_true, y_pred)
-    zipped = list(zip(x, y))
-    for idx in range(0, len(zipped), 81):
-        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81}")
-
-
-def plot_9x9_grid(zipped, title):
-    plt.tight_layout(0.1, rect=(0.2, 0.2, 1, 1))
-    fig, axes = plt.subplots(9, 9, figsize=(9, 12))
-    fig.suptitle(title, y=0.995)
-    tuples = iter(zipped)
-    for i in range(9):
-        for j in range(9):
-            img, label = tuples.__next__()
-            axes[i][j].imshow(img.squeeze(), cmap="gray")
-            axes[i][j].axis('off')
-            axes[i][j].set_title(str(label))
-    plt.show()
 
 
 def create_datasets():
@@ -278,7 +72,7 @@ def create_datasets():
         curated_out.resize(28)
 
         # Empty fields
-        empty_dataset = EmptyDataset(28, 5000)
+        empty_dataset = EmptyDataset(28, 1000)
 
         # Concatenate datasets
         concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
@@ -301,7 +95,7 @@ def create_datasets():
     perspective_transform = RandomPerspectiveTransform(0.1, background_color=0)
     downscale_intermediate_transforms = RescaleIntermediateTransforms(
         (14, 14),
-        [perspective_transform],
+        [perspective_transform, JPEGEncode()],
         inter_consecutive=cv2.INTER_NEAREST
     )
     upscale_and_salt = RescaleIntermediateTransforms(
@@ -323,6 +117,7 @@ def create_datasets():
         dataset.apply_transforms()
 
         dataset.add_transforms(perspective_transform)
+        dataset.add_transforms(perspective_transform, JPEGEncode())
         dataset.add_transforms(downscale_intermediate_transforms)
         dataset.add_transforms(JPEGEncode())
         dataset.apply_transforms()
@@ -330,10 +125,11 @@ def create_datasets():
     # Apply some transforms to other digits
     print("Applying transforms to handwritten digits")
     for dataset in [concat_hand, ]:
-        dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
-        dataset.add_transforms(PoissonNoise(), perspective_transform)
-        dataset.add_transforms(EmbedInGrid(), GrainNoise())
-        dataset.add_transforms(JPEGEncode())
+        dataset.add_transforms(EmbedInGrid())
+        dataset.apply_transforms()
+
+        dataset.add_transforms(upscale_and_salt)
+        dataset.add_transforms(GrainNoise())
         dataset.apply_transforms()
 
     print("Applying transforms to out characters")
@@ -341,23 +137,15 @@ def create_datasets():
         dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
         dataset.add_transforms(EmbedInGrid(), PoissonNoise(), perspective_transform)
         dataset.add_transforms(EmbedInGrid(), GrainNoise())
-        dataset.apply_transforms()
+        dataset.apply_transforms(keep=False)
 
         dataset.add_transforms(JPEGEncode())
+        dataset.add_transforms(perspective_transform, JPEGEncode())
         dataset.apply_transforms()
 
     save_datsets(list(zip([concat_machine, concat_hand, concat_out],
                           ["concat_machine_dataset", "concat_hand_dataset", "concat_out_dataset"])))
     return concat_hand, concat_machine, concat_out
-
-
-def save_datsets(datasets):
-    for dataset, name in tqdm(datasets, desc="Writing datasets to file"):
-        with h5py.File(f"datasets/{name}.hdf5", "w") as f:
-            f.create_dataset("train_x", data=dataset.train_x)
-            f.create_dataset("train_y", data=dataset.train_y)
-            f.create_dataset("test_x", data=dataset.test_x)
-            f.create_dataset("test_y", data=dataset.test_y)
 
 
 def load_datasets(file_names=None):
@@ -415,6 +203,15 @@ def load_validation(to_simple_digit=False):
     return images, labels
 
 
+def save_datsets(datasets):
+    for dataset, name in tqdm(datasets, desc="Writing datasets to file"):
+        with h5py.File(f"datasets/{name}.hdf5", "w") as f:
+            f.create_dataset("train_x", data=dataset.train_x)
+            f.create_dataset("train_y", data=dataset.train_y)
+            f.create_dataset("test_x", data=dataset.test_x)
+            f.create_dataset("test_y", data=dataset.test_y)
+
+
 def create_data_overview(samples=(20, 20)):
     concat_hand, concat_machine, concat_out = load_datasets()
     concat_all = ConcatDataset([concat_hand, concat_machine, concat_out], delete=False)
@@ -444,8 +241,181 @@ def create_data_overview(samples=(20, 20)):
     cv2.imwrite(f"test_samples.png", image)
 
 
+def get_labels(y_true, y_pred):
+    return [f"{y_pred[i]}" if y_pred[i] == y_true[i] else f"{y_pred[i]}/{y_true[i]}" for i in range(y_true.shape[0])]
+
+
+def plot_9x9_grid(zipped, title):
+    plt.tight_layout(0.1, rect=(0.2, 0.2, 1, 1))
+    fig, axes = plt.subplots(9, 9, figsize=(9, 12))
+    fig.suptitle(title, y=0.995)
+    tuples = iter(zipped)
+    for i in range(9):
+        for j in range(9):
+            img, label = tuples.__next__()
+            axes[i][j].imshow(img.squeeze(), cmap="gray")
+            axes[i][j].axis('off')
+            axes[i][j].set_title(str(label))
+    plt.show()
+
+
+# SGD or Adam work well
+def get_linear_model(n_classes=18):
+    model = Sequential()
+    model.add(Dense(128, activation='relu', input_shape=(28 ** 2,)))
+    model.add(Dropout(0.2))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(n_classes, activation='softmax'))
+    return model
+
+
+def train_linear():
+    print("Loading data..")
+    # concat_hand, concat_machine, concat_out = create_datasets()
+    concat_hand, concat_machine, concat_out = load_datasets()
+
+    batch_size = 48
+    train_generator = BalancedDataGenerator(
+        concat_machine.train, concat_hand.train, concat_out.train,
+        batch_size=batch_size,
+        shuffle=True
+    )
+
+    test_generator = BalancedDataGenerator(
+        concat_machine.test, concat_hand.test, concat_out.test,
+        batch_size=batch_size,
+        shuffle=True
+    )
+
+    steps_per_epoch = len(train_generator)
+    validation_steps = len(test_generator)
+
+    # Keras Model
+    print("Creating model..")
+    model = get_linear_model(n_classes=train_generator.num_classes)
+
+    print("Compiling model..")
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                  optimizer=keras.optimizers.Adam(),
+                  metrics=['accuracy'])
+    print(model.summary())
+
+    print("Starting training..")
+    model.fit_generator(
+        train_generator,
+        steps_per_epoch=steps_per_epoch,
+        epochs=20,
+        validation_data=test_generator,
+        validation_steps=validation_steps
+    )
+
+
+# Adadelta or Adagrad work well
+def get_cnn_model(n_classes=18):
+    model = Sequential()
+    model.add(Conv2D(16, (3, 3), activation='relu',
+                     input_shape=(28, 28, 1)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Conv2D(32, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
+    model.add(Dropout(0.25))
+    model.add(Flatten())
+    model.add(Dense(64, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Dense(n_classes, activation='softmax'))
+    return model
+
+
+def train_cnn(to_simple_digit=True):
+    print("Loading data..")
+    concat_hand, concat_machine, concat_out = load_datasets()
+
+    batch_size = 192
+    train_generator = SimpleDataGenerator(
+        # concat_machine.train, concat_hand.train,
+        concat_machine.train, concat_hand.train, concat_out.train,
+        batch_size=batch_size,
+        shuffle=True,
+        # data_align=1
+        to_simple_digit=to_simple_digit
+    )
+    unique, coeffs = np.unique(train_generator.labels, return_counts=True)
+    coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
+
+    test_generator = SimpleDataGenerator(
+        # concat_machine.test, concat_hand.test,
+        concat_machine.test, concat_hand.test, concat_out.test,
+        batch_size=batch_size,
+        shuffle=True,
+        to_simple_digit=to_simple_digit
+    )
+
+    steps_per_epoch = len(train_generator)
+    validation_steps = len(test_generator)
+
+    # Run training on the GPU
+    with tf.device('/GPU:0'):
+        # Keras Model
+        print("Creating model..")
+        model = get_cnn_model(n_classes=train_generator.num_classes)
+
+        print("Compiling model..")
+        model.compile(
+            loss=keras.losses.categorical_crossentropy,
+            optimizer=keras.optimizers.Adagrad(),
+            metrics=[keras.metrics.categorical_accuracy],
+            weighted_metrics=['accuracy']
+        )
+        print(model.summary())
+
+        print("Starting training..")
+        model.fit_generator(
+            train_generator,
+            steps_per_epoch=steps_per_epoch,
+            epochs=5,
+            validation_data=test_generator,
+            validation_steps=validation_steps,
+            use_multiprocessing=True,
+            workers=8,
+            class_weight=coeffs
+        )
+
+        x, y = train_generator[0]
+        y_true = np.argmax(y, axis=-1)
+        y_pred = model.predict_classes(x)
+        y = get_labels(y_true, y_pred)
+        plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
+
+        x, y = test_generator[0]
+        y_true = np.argmax(y, axis=-1)
+        y_pred = model.predict_classes(x)
+        y = get_labels(y_true, y_pred)
+        plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
+
+        evaluate(model, to_simple_digit)
+
+
+def evaluate(model: Sequential, to_simple_digit=False):
+    print("Evaluating")
+    x, y = load_validation(to_simple_digit)
+    print(dict(zip(model.metrics_names, model.evaluate(x, y))))
+    y_true = np.argmax(y, axis=-1)
+    y_pred = model.predict_classes(x)
+    y = get_labels(y_true, y_pred)
+    zipped = list(zip(x, y))
+    for idx in range(0, len(zipped), 81):
+        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81}")
+
+
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    # create_datasets()
+    create_datasets()
     create_data_overview()
     train_cnn()
