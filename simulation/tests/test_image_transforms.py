@@ -1,13 +1,13 @@
 from unittest import TestCase
 
-import cv2
-import numpy as np
 from matplotlib import pyplot as plt
 
-from simulation.transforms import GaussianNoise, RandomPerspectiveTransform, GaussianBlur, EmbedInGrid
+from simulation.transforms import *
 
 
 class ImageTransformTests(TestCase):
+    digit = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
+
     def test_with_sudoku(self):
         img = cv2.imread("../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
         img = GaussianNoise().apply(img)
@@ -19,24 +19,62 @@ class ImageTransformTests(TestCase):
         plt.axis('off')
         plt.show()
 
-    def test_embed(self):
-        digit = cv2.imread("../../datasets/digits/1.png")
-        cv2.bitwise_not(digit, digit)
+    def test_EmbedInGrid(self):
         transform = EmbedInGrid()
-        tdigit = transform.apply(digit)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
+        self.apply_transform(transform)
+
+    def test_GaussianBlur(self):
+        transform = GaussianBlur()
+        self.apply_transform(transform)
+
+    def test_GaussianNoise(self):
+        transform = GaussianNoise()
+        self.apply_transform(transform)
+
+    def test_PoissonNoise(self):
+        transform = PoissonNoise()
+        self.apply_transform(transform)
+
+    def test_SaltAndPepperNoise(self):
+        transform = SaltAndPepperNoise()
+        self.apply_transform(transform)
+
+    def test_SpeckleNoise(self):
+        transform = SpeckleNoise()
+        self.apply_transform(transform)
+
+    def test_SharpenFilter(self):
+        transform = SharpenFilter()
+        self.apply_transform(transform)
+
+    def test_ReliefFilter(self):
+        transform = ReliefFilter()
+        self.apply_transform(transform)
+
+    def test_EdgeFilter(self):
+        transform = EdgeFilter()
+        self.apply_transform(transform)
+
+    def test_UnsharpMaskingFilter(self):
+        transform = UnsharpMaskingFilter()
+        self.apply_transform(transform)
+
+    def test_RandomPerspectiveTransform(self):
+        transform = RandomPerspectiveTransform()
+        self.apply_transform(transform)
+
+    def test_JPEGEncode(self):
+        transform = JPEGEncode()
+        self.apply_transform(transform)
+
+    def apply_transform(self, transform):
+        tdigit = transform.apply(self.digit)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2,1))
+        fig.suptitle(transform.__class__.__name__, fontsize='8')
         ax1.axis('off')
         ax2.axis('off')
-        ax1.imshow(digit)
-        ax2.imshow(tdigit)
-        plt.show()
-
-    def transform_sudoku(self):
-        transform = RandomPerspectiveTransform()
-        img = cv2.imread(f"../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
-        transformed = transform.apply(img)
-        plt.imshow(transformed, cmap="gray")
-        plt.axis('off')
+        ax1.imshow(self.digit, cmap="gray", interpolation='none')
+        ax2.imshow(tdigit, cmap="gray", interpolation='none')
         plt.show()
 
     def generate_composition(self):
