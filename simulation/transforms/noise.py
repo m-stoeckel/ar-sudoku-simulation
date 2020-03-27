@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from simulation.render import Color
+from simulation import Color
 from simulation.transforms.base import ImageTransform
 
 

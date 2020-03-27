@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from simulation.digit.dataset import MNIST, CuratedCharactersDataset
-from simulation.render import Color
+from simulation import Color
 from simulation.render.layers import DigitalCompositionLayer
 
 DEBUG = True

@@ -3,7 +3,7 @@ from typing import List, Tuple, Union
 import cv2
 import numpy as np
 
-from simulation.render.colors import uint8_from_number
+from simulation.colors import uint8_from_number
 from simulation.render.digital_composition import AlphaComposition, GammaCorrectedAlphaComposition
 
 
