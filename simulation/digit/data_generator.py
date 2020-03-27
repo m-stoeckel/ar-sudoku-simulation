@@ -54,75 +54,77 @@ class DigitDataGenerator(keras.utils.Sequence):
         return x, keras.utils.to_categorical(y, num_classes=9)
 
 
-class BalancedDataGenerator(keras.utils.Sequence):
-    TRUNCATE = 0
-    REPEAT = 1
+class BaseDataGenerator(keras.utils.Sequence):
+    def get_data(self):
+        pass
 
+    def get_labels(self):
+        pass
+
+
+class BalancedDataGenerator(BaseDataGenerator):
     def __init__(
             self,
-            machine_digits: (np.ndarray, np.ndarray),
-            handwritten_digits: (np.ndarray, np.ndarray),
-            out_dataset: (np.ndarray, np.ndarray),
+            *datasets: Tuple[np.ndarray, np.ndarray],
             batch_size=32,
             shuffle=True,
             flatten=False,
-            data_align=TRUNCATE
+            truncate=True,
+            num_classes=20
     ):
         """
-        TODO: Comment
-        :param machine_digits:
-        :type machine_digits:
-        :param handwritten_digits:
-        :type handwritten_digits:
-        :param out_dataset:
-        :type out_dataset:
+
+        :param datasets:
+        :type datasets:
         :param batch_size:
         :type batch_size:
         :param shuffle:
         :type shuffle:
         :param flatten:
         :type flatten:
-        :param data_align:
-        :type data_align:
+        :param truncate:
+        :type truncate:
         """
-        self.machine_dataset = machine_digits
-        self.handwritten_dataset = handwritten_digits
-        self.out_dataset = out_dataset
+        self.datasets = [dataset[0] for dataset in datasets]
+        self.labels = [dataset[1] for dataset in datasets]
+        self.lengths = [dataset[1].shape[0] for dataset in datasets]
 
         self.shuffle = shuffle
         self.flatten = flatten
+        self.truncate = truncate
         self.batch_size = batch_size
-        self.data_align = data_align
-        if self.batch_size % 3 != 0:
-            warnings.warn("The batch size should be divisible by three!")
 
-        self.num_classes = 20
+        if batch_size % self.num_datasets != 0:
+            warnings.warn("The batch size should be divisible by the number of datasets!")
+        self.mini_batch_size = int(batch_size / self.num_datasets)
+        self.last_mini_batch_size = batch_size - (self.num_datasets - 1) * self.mini_batch_size
 
-        self.machine_len = self.machine_dataset[0].shape[0]
-        self.handwritten_len = self.handwritten_dataset[0].shape[0]
-        self.out_len = self.out_dataset[0].shape[0]
+        self.num_classes = num_classes
 
-        if not (self.machine_len == self.handwritten_len == self.out_len):
-            s_data_align = "truncating larger" if self.data_align == self.TRUNCATE else "repeating smaller"
-            print(f"Dataset sizes are different, {s_data_align} datasets: "
-                  f"machine_len={self.machine_len}, handwritten_len={self.handwritten_len}, out_len={self.out_len}")
+        if not np.alltrue(self.lengths == self.lengths[0]):
+            s_data_align = "truncating larger" if self.truncate else "repeating smaller"
+            print(f"Dataset sizes are different, {s_data_align} datasets.")
 
         self.on_epoch_end()
 
     @property
+    def num_datasets(self):
+        return len(self.lengths)
+
+    @property
     def max_len(self):
-        return max(self.handwritten_len, self.machine_len, self.out_len)
+        return max(self.lengths)
 
     @property
     def min_len(self):
-        return min(self.handwritten_len, self.machine_len, self.out_len)
+        return min(self.lengths)
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
-        if self.data_align == self.TRUNCATE:
-            return int(np.ceil(self.min_len * 3 / self.batch_size))
+        if self.truncate:
+            return int(np.ceil(self.min_len * self.num_datasets / self.batch_size))
         else:
-            return int(np.ceil(self.max_len * 3 / self.batch_size))
+            return int(np.ceil(self.max_len * self.num_datasets / self.batch_size))
 
     def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -134,21 +136,16 @@ class BalancedDataGenerator(keras.utils.Sequence):
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         # Generate indexes of the batch
-        mini_batch_size = int(self.batch_size / 3)
-        mini_batch_size_last = self.batch_size - 2 * mini_batch_size
-
-        machine_indices = self.machine_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
-        handwritten_indices = self.handwritten_indices[index * mini_batch_size:(index + 1) * mini_batch_size]
-        out_indices = self.out_indices[index * mini_batch_size_last:(index + 1) * mini_batch_size_last]
+        indices = [dataset_indices[index * self.mini_batch_size:(index + 1) * self.mini_batch_size]
+                   for dataset_indices in self.indices]
+        indices[-1] = self.indices[-1][index * self.last_mini_batch_size:(index + 1) * self.last_mini_batch_size]
 
         # Generate data
-        xd, yd = self.__machine_data_generation(machine_indices)
-        xm, ym = self.__handwritten_data_generation(handwritten_indices)
-        xo, yo = self.__out_data_generation(out_indices)
+        xs, ys = self._data_generation(indices)
 
         # Stack data and convert images to float
-        x = np.vstack((xd, xm, xo)).astype(np.float32)
-        y = np.vstack((yd, ym, yo))
+        x = np.vstack(xs).astype(np.float32)
+        y = np.hstack(ys)
 
         # Scale x to 0..1
         x /= 255.
@@ -162,62 +159,83 @@ class BalancedDataGenerator(keras.utils.Sequence):
         return x, y
 
     def on_epoch_end(self):
-        if self.data_align == self.TRUNCATE:
-            self.machine_indices = np.arange(self.machine_len)
-            self.handwritten_indices = np.arange(self.handwritten_len)
-            self.out_indices = np.arange(self.out_len)
+        if self.truncate:
+            self.indices = [np.arange(len(dataset)) for dataset in self.datasets]
         else:
-            self.machine_indices = np.arange(self.max_len) % self.machine_len
-            self.handwritten_indices = np.arange(self.max_len) % self.handwritten_len
-            self.out_indices = np.arange(self.max_len) % self.out_len
+            self.indices = [np.arange(self.max_len) % len(dataset) for dataset in self.datasets]
 
         if self.shuffle:
-            np.random.shuffle(self.machine_indices)
-            np.random.shuffle(self.handwritten_indices)
-            np.random.shuffle(self.out_indices)
+            for dataset_indices in self.indices:
+                np.random.shuffle(dataset_indices)
 
-    def __machine_data_generation(self, indices):
+    def _data_generation(self, indices):
+        xs, ys = [], []
+        for i in range(self.num_datasets):
+            xs.append(self.datasets[i][indices[i]])
+            ys.append(keras.utils.to_categorical(self.labels[i][indices[i]], num_classes=self.num_classes))
+        return tuple(xs), tuple(ys)
+
+    def get_data(self):
+        return np.vstack(tuple([dataset[0] for dataset in self.datasets]))
+
+    def get_labels(self):
+        return np.hstack(tuple([dataset[1] for dataset in self.datasets]))
+
+
+class ToBinaryGenerator(BalancedDataGenerator):
+    def __init__(
+            self,
+            *datasets: (np.ndarray, np.ndarray),
+            class_to_match: int = 0,
+            **kwargs
+    ):
         """
-        Generates data containing batch_size samples. Machine written digits have class <digit>.
-        :param indices: The indices to select
-        :return: A tuple of a digit array and a class categorical array
+
+        :param datasets:
+        :type datasets:
+        :param class_to_match:
+        :type class_to_match:
+        :param kwargs:
+        :type kwargs:
         """
-        x = self.machine_dataset[0][indices]
-        y = self.machine_dataset[1][indices]
+        self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
+        self.all_labels = np.hstack(tuple([dataset[1] for dataset in datasets]))
 
-        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        # Split all datasets into matching and other data
+        matched_indices = self.all_labels == class_to_match
+        other_indices = self.all_labels != class_to_match
 
-    def __handwritten_data_generation(self, indices):
-        """
-        Generates data containing batch_size samples. MNIST digits have class <digit> + 9.
-        :param indices: The indices to select
-        :return: A tuple of a digit array and a class categorical array
-        """
-        x = self.handwritten_dataset[0][indices]
-        y = self.handwritten_dataset[1][indices]
+        # Assign new binary labels
+        self.all_labels[matched_indices] = 1
+        self.all_labels[other_indices] = 0
 
-        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        matched_data = (self.data[matched_indices], self.all_labels[matched_indices])
+        other_data = (self.data[other_indices], self.all_labels[other_indices])
+        super().__init__(matched_data, other_data, num_classes=1, **kwargs)
 
-    def __out_data_generation(self, indices):
-        """
-        Generates data containing batch_size samples. MNIST digits have class <digit> + 9.
-        :param indices: The indices to select
-        :return: A tuple of a digit array and a class categorical array
-        """
-        x = self.out_dataset[0][indices]
-        y = self.out_dataset[1][indices]
+    def _data_generation(self, indices):
+        xs, ys = [], []
+        for i in range(self.num_datasets):
+            xs.append(self.datasets[i][indices[i]])
+            ys.append(self.labels[i][indices[i]])
+        return xs, ys
 
-        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
+    def get_data(self):
+        return self.data
+
+    def get_labels(self):
+        return self.all_labels
 
 
-class SimpleDataGenerator(keras.utils.Sequence):
+class SimpleDataGenerator(BaseDataGenerator):
     def __init__(
             self,
             *datasets: (np.ndarray, np.ndarray),
             batch_size=32,
             shuffle=True,
             flatten=False,
-            to_simple_digit=False
+            to_simple_digit=False,
+            no_zero=False
     ):
         """
         TODO: Comment
@@ -247,7 +265,11 @@ class SimpleDataGenerator(keras.utils.Sequence):
             indices = self.labels != 10
             self.data = self.data[indices]
             self.labels = self.labels[indices]
-            self.num_classes = 10
+            if no_zero:
+                self.labels -= 1
+                self.num_classes = 9
+            else:
+                self.num_classes = 10
         else:
             self.num_classes = 20
 
@@ -270,7 +292,7 @@ class SimpleDataGenerator(keras.utils.Sequence):
         indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
 
         # Generate data
-        x, y = self.__data_generation(indices)
+        x, y = self._data_generation(indices)
 
         # Convert images to float
         x = x.astype(np.float32)
@@ -291,7 +313,7 @@ class SimpleDataGenerator(keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.indices)
 
-    def __data_generation(self, indices):
+    def _data_generation(self, indices):
         """
         Generates data containing batch_size samples. MNIST digits have class <digit> + 9.
         :param indices: The indices to select
@@ -301,3 +323,9 @@ class SimpleDataGenerator(keras.utils.Sequence):
         y = self.labels[indices]
 
         return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
+
+    def get_data(self):
+        return self.data
+
+    def get_labels(self):
+        return self.labels
