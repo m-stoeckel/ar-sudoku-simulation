@@ -1,28 +1,26 @@
-import json
-import os
-import sys
-from pathlib import Path
-
 import h5py
 import keras
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras import Sequential
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
-from tqdm import tqdm
 
 from simulation.digit import BalancedDataGenerator
 from simulation.digit.data_generator import SimpleDataGenerator
-from simulation.digit.dataset import PrerenderedDigitDataset, ClassSeparateMNIST, ConcatDataset, \
-    PrerenderedCharactersDataset, CharacterDataset, EmptyDataset, ClassSeparateCuratedCharactersDataset
+from simulation.digit.dataset import *
 from simulation.transforms import *
 
 tf.get_logger().setLevel('ERROR')
 
+BASE_DATASET_NAMES = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset",
+                      "base_real_dataset", "validation_real_dataset"]
+TRANSFORMED_DATASET_NAMES = ["train_machine_dataset", "train_hand_dataset", "train_out_dataset",
+                             "train_real_dataset", "validation_real_dataset"]
 
-def create_datasets():
-    base_names = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset"]
-    if not all(os.path.exists(f"datasets/{name}.hdf5") for name in base_names):
+
+def generate_base_datasets():
+    if not all(os.path.exists(f"datasets/{name}.hdf5") for name in BASE_DATASET_NAMES[:3]):
         digit_characters = "123456789"
         non_digit_characters = "0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
 
@@ -72,7 +70,7 @@ def create_datasets():
         curated_out.resize(28)
 
         # Empty fields
-        empty_dataset = EmptyDataset(28, 1000)
+        empty_dataset = EmptyDataset(28, 5000)
 
         # Concatenate datasets
         concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
@@ -88,8 +86,24 @@ def create_datasets():
         # Remove old datasets, as concatenation creates a copy of all images
         del digit_dataset, prerendered_digit_dataset, mnist, curated_digits, empty_dataset, \
             curated_out, prerendered_nondigit_dataset
-    else:
-        concat_hand, concat_machine, concat_out = load_datasets(base_names)
+    if not all(os.path.exists(f"datasets/{name}.hdf5") for name in BASE_DATASET_NAMES[3:]):
+        #############
+        # Real data #
+        #############
+
+        real_training = RealDataset("datasets/real")
+        real_validation = RealValidationDataset("datasets/validation")
+
+        # Save base datasets for later
+        save_datsets([(real_training, "base_real_dataset"),
+                      (real_validation, "validation_real_dataset")])
+
+
+def generate_transformed_datasets():
+    if not all(os.path.exists(f"datasets/{name}.hdf5") for name in BASE_DATASET_NAMES):
+        generate_base_datasets()
+
+    concat_machine, concat_hand, concat_out, real_dataset = load_datasets(BASE_DATASET_NAMES[:4])
 
     # Transforms
     perspective_transform = RandomPerspectiveTransform(0.1, background_color=0)
@@ -108,99 +122,67 @@ def create_datasets():
     print("Applying transforms to machine digits")
     for dataset in [concat_machine]:
         dataset.add_transforms(EmbedInGrid())
-        dataset.apply_transforms()
+        dataset.apply_transforms()  # -> 20086 images
 
-        dataset.add_transforms(PoissonNoise())
         dataset.add_transforms(upscale_and_salt)
         dataset.add_transforms(GrainNoise())
-        dataset.add_transforms(GaussianNoise())
-        dataset.apply_transforms()
+        dataset.apply_transforms()  # -> 60258 images
 
         dataset.add_transforms(perspective_transform)
         dataset.add_transforms(perspective_transform, JPEGEncode())
         dataset.add_transforms(downscale_intermediate_transforms)
+        dataset.add_transforms(PoissonNoise(), JPEGEncode())
         dataset.add_transforms(JPEGEncode())
-        dataset.apply_transforms()
+        dataset.apply_transforms()  # -> 361548 images
+    print(f"Created {concat_machine.test_y.size}/{concat_machine.train_y.size} machine images")
 
     # Apply some transforms to other digits
     print("Applying transforms to handwritten digits")
-    for dataset in [concat_hand, ]:
+    for dataset in [concat_hand]:
         dataset.add_transforms(EmbedInGrid())
-        dataset.apply_transforms()
+        dataset.apply_transforms()  # -> 124748 images
 
-        dataset.add_transforms(upscale_and_salt)
-        dataset.add_transforms(GrainNoise())
-        dataset.apply_transforms()
+        dataset.add_transforms(upscale_and_salt, perspective_transform, JPEGEncode())
+        dataset.add_transforms(GrainNoise(), perspective_transform)
+        dataset.apply_transforms()  # -> 374244 images
+    print(f"Created {concat_hand.test_y.size}/{concat_hand.train_y.size} handwritten images")
 
-    print("Applying transforms to out characters")
+    print("Applying transforms to out images")
     for dataset in [concat_out]:
         dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
-        dataset.add_transforms(EmbedInGrid(), PoissonNoise(), perspective_transform)
+        dataset.add_transforms(EmbedInGrid(), PoissonNoise())
         dataset.add_transforms(EmbedInGrid(), GrainNoise())
-        dataset.apply_transforms(keep=False)
+        dataset.apply_transforms(keep=False)  # -> 27000
 
         dataset.add_transforms(JPEGEncode())
         dataset.add_transforms(perspective_transform, JPEGEncode())
-        dataset.apply_transforms()
+        dataset.apply_transforms()  # -> 40500 images
+    print(f"Created {concat_out.test_y.size}/{concat_out.train_y.size} out images")
 
-    save_datsets(list(zip([concat_machine, concat_hand, concat_out],
-                          ["concat_machine_dataset", "concat_hand_dataset", "concat_out_dataset"])))
-    return concat_hand, concat_machine, concat_out
+    print("Applying transforms to real images")
+    for dataset in [real_dataset]:
+        dataset.add_transforms(JPEGEncode())
+        dataset.add_transforms(perspective_transform, JPEGEncode())
+        dataset.apply_transforms()  # -> 14433 images
+    print(f"Created {real_dataset.test_y.size}/{real_dataset.train_y.size} real images")
+
+    save_datsets(list(zip([concat_machine, concat_hand, concat_out, real_dataset],
+                          ["train_machine_dataset", "train_hand_dataset", "train_out_dataset", "train_real_dataset"])))
 
 
-def load_datasets(file_names=None):
-    if file_names is None:
-        file_names = ["concat_machine_dataset", "concat_hand_dataset", "concat_out_dataset"]
+def load_datasets(file_names):
+    datasets = []
 
-    machine = CharacterDataset(28)
-    hand = CharacterDataset(28)
-    out = CharacterDataset(28)
-
-    for dataset, name in tqdm(zip([machine, hand, out], file_names), desc="Loading datasets from file", total=3):
+    for name in tqdm(file_names, desc="Loading datasets from file", total=len(file_names)):
+        dataset = CharacterDataset(28)
         with h5py.File(f"datasets/{name}.hdf5", "r") as f:
             dataset.train_x = f["train_x"][:]
             dataset.train_y = f["train_y"][:]
             dataset.test_x = f["test_x"][:]
             dataset.test_y = f["test_y"][:]
+        datasets.append(dataset)
 
-    return hand, machine, out
-
-
-def load_validation(to_simple_digit=False):
-    labels = []
-    images = []
-    for i in range(10):
-        base_path = Path("datasets/validation/") / str(i)
-        labels_path = base_path / "labels.json"
-        if base_path.exists() and base_path.is_dir() and labels_path.exists():
-            with open(labels_path, 'r', encoding="utf8") as fp:
-                _labels = json.load(fp)["labels"]
-                if len(_labels) != 81:
-                    print(f"{labels_path}: len={len(labels)}", file=sys.stderr)
-                    continue
-                labels.extend(_labels)
-            for i in range(81):
-                img_path = base_path / f"box_{i}.png"
-                if not img_path.exists():
-                    print(f"{img_path} does not exist", file=sys.stderr)
-                    raise RuntimeError
-                img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-                img = cv2.resize(img, (28, 28), interpolation=cv2.INTER_LANCZOS4)
-                images.append(img)
-
-    images = np.expand_dims(np.array(images, dtype=np.uint8), axis=3)
-    labels = np.array(labels, dtype=int)
-    assert images.shape[0] == labels.shape[0]
-
-    num_classes = 20
-    if to_simple_digit:
-        indices = np.logical_and(labels > 9, labels != 10)
-        labels[indices] -= 10
-        num_classes = 11
-
-    labels = keras.utils.to_categorical(labels, num_classes=num_classes)
-
-    return images, labels
+    return datasets
 
 
 def save_datsets(datasets):
@@ -212,33 +194,28 @@ def save_datsets(datasets):
             f.create_dataset("test_y", data=dataset.test_y)
 
 
-def create_data_overview(samples=(20, 20)):
-    concat_hand, concat_machine, concat_out = load_datasets()
-    concat_all = ConcatDataset([concat_hand, concat_machine, concat_out], delete=False)
+def create_data_overview(samples=20):
+    concat_machine, concat_hand, concat_out, train, _ = load_datasets(TRANSFORMED_DATASET_NAMES)
 
-    non_zero_classes = set()
-    for i in range(samples[0]):
-        if concat_all.train_indices_by_number[i].size > 0: non_zero_classes.add(i)
-    indices = np.array(
-        [np.random.choice(concat_all.train_indices_by_number[i], samples[1]) for i in non_zero_classes]
-    ).reshape(-1)
-    image = concat_all.train_x[indices] \
-        .reshape(len(non_zero_classes), samples[1], 28, 28) \
-        .swapaxes(1, 2) \
-        .reshape(len(non_zero_classes) * 28, samples[1] * 28)
-    cv2.imwrite(f"train_samples.png", image)
+    dataset = ConcatDataset([concat_machine, concat_hand, concat_out], delete=False)
+    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_samples.png")
+    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_samples.png")
 
+    dataset = ConcatDataset([train], delete=False)
+    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_real.png")
+    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_real.png")
+
+
+def render_overview(data, indices_by_number, samples, filename):
     non_zero_classes = set()
-    for i in range(samples[0]):
-        if concat_all.test_indices_by_number[i].size > 0: non_zero_classes.add(i)
-    indices = np.array(
-        [np.random.choice(concat_all.test_indices_by_number[i], samples[1]) for i in non_zero_classes]
-    ).reshape(-1)
-    image = concat_all.test_x[indices] \
-        .reshape(len(non_zero_classes), samples[1], 28, 28) \
+    for i in indices_by_number.keys():
+        if indices_by_number[i].size > 0: non_zero_classes.add(i)
+    indices = np.array([np.random.choice(indices_by_number[i], samples) for i in non_zero_classes]).reshape(-1)
+    image = data[indices] \
+        .reshape(len(non_zero_classes), samples, 28, 28) \
         .swapaxes(1, 2) \
-        .reshape(len(non_zero_classes) * 28, samples[1] * 28)
-    cv2.imwrite(f"test_samples.png", image)
+        .reshape(len(non_zero_classes) * 28, samples * 28)
+    cv2.imwrite(filename, image)
 
 
 def get_labels(y_true, y_pred):
@@ -272,8 +249,7 @@ def get_linear_model(n_classes=18):
 
 def train_linear():
     print("Loading data..")
-    # concat_hand, concat_machine, concat_out = create_datasets()
-    concat_hand, concat_machine, concat_out = load_datasets()
+    concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     batch_size = 48
     train_generator = BalancedDataGenerator(
@@ -325,9 +301,9 @@ def get_cnn_model(n_classes=18):
     model.add(MaxPooling2D(pool_size=(3, 3)))
     model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(64, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Dense(64, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
     return model
@@ -335,12 +311,11 @@ def get_cnn_model(n_classes=18):
 
 def train_cnn(to_simple_digit=True):
     print("Loading data..")
-    concat_hand, concat_machine, concat_out = load_datasets()
+    concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     batch_size = 192
     train_generator = SimpleDataGenerator(
-        # concat_machine.train, concat_hand.train,
-        concat_machine.train, concat_hand.train, concat_out.train,
+        concat_machine.train, concat_hand.train, concat_out.train, real_training.train,
         batch_size=batch_size,
         shuffle=True,
         # data_align=1
@@ -349,16 +324,19 @@ def train_cnn(to_simple_digit=True):
     unique, coeffs = np.unique(train_generator.labels, return_counts=True)
     coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
 
-    test_generator = SimpleDataGenerator(
-        # concat_machine.test, concat_hand.test,
-        concat_machine.test, concat_hand.test, concat_out.test,
+    dev_generator = SimpleDataGenerator(
+        concat_machine.test, concat_hand.test, concat_out.test, real_training.test,
         batch_size=batch_size,
         shuffle=True,
         to_simple_digit=to_simple_digit
     )
 
-    steps_per_epoch = len(train_generator)
-    validation_steps = len(test_generator)
+    test_generator = SimpleDataGenerator(
+        real_validation.test,
+        batch_size=batch_size,
+        shuffle=False,
+        to_simple_digit=to_simple_digit
+    )
 
     # Run training on the GPU
     with tf.device('/GPU:0'):
@@ -377,14 +355,12 @@ def train_cnn(to_simple_digit=True):
 
         print("Starting training..")
         model.fit_generator(
-            train_generator,
-            steps_per_epoch=steps_per_epoch,
-            epochs=5,
-            validation_data=test_generator,
-            validation_steps=validation_steps,
+            train_generator, validation_data=dev_generator,
+            epochs=20,
             use_multiprocessing=True,
             workers=8,
-            class_weight=coeffs
+            class_weight=coeffs,
+            callbacks=[ModelCheckpoint("model/cnn_model"), EarlyStopping(restore_best_weights=True)]
         )
 
         x, y = train_generator[0]
@@ -393,29 +369,32 @@ def train_cnn(to_simple_digit=True):
         y = get_labels(y_true, y_pred)
         plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
 
-        x, y = test_generator[0]
+        x, y = dev_generator[0]
         y_true = np.argmax(y, axis=-1)
         y_pred = model.predict_classes(x)
         y = get_labels(y_true, y_pred)
         plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
 
-        evaluate(model, to_simple_digit)
+        evaluate(model, test_generator)
 
 
-def evaluate(model: Sequential, to_simple_digit=False):
+def evaluate(model: Sequential, test_generator: SimpleDataGenerator):
     print("Evaluating")
-    x, y = load_validation(to_simple_digit)
-    print(dict(zip(model.metrics_names, model.evaluate(x, y))))
+    x = np.expand_dims(test_generator.data, 3)
+    y = test_generator.labels
+    print(dict(zip(model.metrics_names, model.evaluate_generator(test_generator))))
     y_true = np.argmax(y, axis=-1)
     y_pred = model.predict_classes(x)
+    print(y_true, y_pred)
     y = get_labels(y_true, y_pred)
     zipped = list(zip(x, y))
     for idx in range(0, len(zipped), 81):
-        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81}")
+        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81 + 1}")
 
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    create_datasets()
+    generate_base_datasets()
+    generate_transformed_datasets()
     create_data_overview()
     train_cnn()
