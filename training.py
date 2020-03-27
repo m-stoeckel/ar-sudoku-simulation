@@ -8,11 +8,14 @@ from keras.layers import *
 from sklearn.metrics import classification_report
 
 from simulation.digit import BalancedDataGenerator
-from simulation.digit.data_generator import SimpleDataGenerator
+from simulation.digit.data_generator import SimpleDataGenerator, ToBinaryGenerator, BaseDataGenerator
 from simulation.digit.dataset import *
 from simulation.transforms import *
 
 tf.get_logger().setLevel('ERROR')
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 
 BASE_DATASET_NAMES = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset",
                       "base_real_dataset", "validation_real_dataset"]
@@ -315,19 +318,20 @@ def train_linear():
 # Adadelta or Adagrad work well
 def get_cnn_max_model(n_classes=18):
     model = Sequential()
-    model.add(Conv2D(16, (3, 3), activation='relu',
+    model.add(Conv2D(16, (3, 3),
                      input_shape=(28, 28, 1)))  # 26x26x16
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 13x13x16
-    model.add(Dropout(0.25))
-    model.add(Conv2D(32, (2, 2), activation='relu'))  # 12x12x32
+    model.add(Conv2D(32, (2, 2)))  # 12x12x32
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 6x6x32
-    model.add(Dropout(0.25))
-    model.add(Conv2D(64, (3, 3), activation='relu'))  # 4x4x64
+    model.add(Conv2D(64, (3, 3)))  # 4x4x64
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
-    model.add(Dropout(0.25))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
     model.add(Flatten())  # 256
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.25))
     model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(n_classes, activation='softmax'))
@@ -335,24 +339,21 @@ def get_cnn_max_model(n_classes=18):
 
 
 # Adadelta or Adagrad work well
-def get_cnn_avg_model(n_classes=18):
+def get_cnn_binary_model():
     model = Sequential()
-    model.add(Conv2D(16, (3, 3), activation='relu',
-                     input_shape=(28, 28, 1)))  # 26x26x16
-    model.add(AveragePooling2D(pool_size=(2, 2)))  # 13x13x16
-    model.add(Dropout(0.25))
-    model.add(Conv2D(32, (2, 2), activation='relu'))  # 12x12x32
-    model.add(AveragePooling2D(pool_size=(2, 2)))  # 6x6x32
-    model.add(Dropout(0.25))
-    model.add(Conv2D(64, (3, 3), activation='relu'))  # 4x4x64
-    model.add(AveragePooling2D(pool_size=(2, 2)))  # 2x2x64
-    model.add(Dropout(0.25))
+    model.add(Conv2D(16, (5, 5), strides=2,
+                     input_shape=(28, 28, 1)))  # 24x24x16
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(4, 4)))  # 6x6x16
+    model.add(Conv2D(32, (2, 2)))  # 6x62x32
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))  # 3x3x32
     model.add(Flatten())  # 256
     model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.25))
-    model.add(Dense(n_classes, activation='softmax'))
+    model.add(Dense(1, activation='sigmoid'))
     return model
 
 
@@ -367,8 +368,6 @@ def train_cnn(to_simple_digit=True):
         shuffle=True,
         to_simple_digit=to_simple_digit
     )
-    unique, coeffs = np.unique(train_generator.labels, return_counts=True)
-    coeffs = dict(zip(unique, coeffs.astype(np.float) / np.sum(coeffs)))
 
     dev_generator = SimpleDataGenerator(
         concat_machine.test, concat_hand.test, concat_out.test,
@@ -383,8 +382,6 @@ def train_cnn(to_simple_digit=True):
         shuffle=True,
         to_simple_digit=to_simple_digit
     )
-    ft_unique, ft_coeffs = np.unique(train_generator.labels, return_counts=True)
-    ft_coeffs = dict(zip(unique, ft_coeffs.astype(np.float) / np.sum(ft_coeffs)))
 
     ft_dev_generator = SimpleDataGenerator(
         real_training.test,
@@ -404,18 +401,12 @@ def train_cnn(to_simple_digit=True):
     with tf.device('/GPU:0'):
         # Keras Model
         print("Creating model..")
-        model = get_cnn_avg_model(n_classes=train_generator.num_classes)
-        # model = get_cnn_max_model(n_classes=train_generator.num_classes)
+        model = get_cnn_max_model(n_classes=train_generator.num_classes)
 
         # Hyperparameters
         epochs = 20
         ft_epochs = 20
         learning_rate = 0.01
-        k = 0.1
-
-        def exp_decay(epoch):
-            lr = learning_rate * np.exp(-k * epoch)
-            return lr
 
         print("Compiling model..")
         model.compile(
@@ -431,11 +422,9 @@ def train_cnn(to_simple_digit=True):
             epochs=epochs,
             use_multiprocessing=True,
             workers=8,
-            # class_weight=coeffs,
             callbacks=[
                 ModelCheckpoint("model/cnn_model.{epoch:02d}.hdf5", period=2),
-                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True, patience=2),
-                # LearningRateScheduler(exp_decay)
+                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
             ]
         )
 
@@ -445,67 +434,133 @@ def train_cnn(to_simple_digit=True):
             epochs=ft_epochs,
             use_multiprocessing=True,
             workers=8,
-            # class_weight=ft_coeffs,
             callbacks=[
                 ModelCheckpoint("model/cnn_model.ft.{epoch:02d}.hdf5", period=2),
+                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
             ]
         )
 
         model.save("model/cnn_model.ft.final.hdf5")
 
-        x, y = train_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Training sample")
-
-        x, y = dev_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Development sample")
-
-        x, y = ft_train_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Finetuning training sample")
-
-        x, y = ft_dev_generator[0]
-        y_true = np.argmax(y, axis=-1)
-        y_pred = model.predict_classes(x)
-        y = get_labels(y_true, y_pred)
-        plot_9x9_grid(list(zip(x, y))[:81], "Finetuning development sample")
-
         print("Evaluating")
-        evaluate(model, dev_generator)
-        evaluate(model, ft_dev_generator)
+        print(list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
+        print(list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
         evaluate_and_plot(model, test_generator)
 
 
-def evaluate(model: Sequential, test_generator: SimpleDataGenerator):
-    x = np.expand_dims(test_generator.data, 3)
-    y_true = test_generator.labels
-    y_pred = np.array(model.predict_classes(x))
-    print(f"Accuracy: {np.mean((y_true == y_pred).astype(np.float))}")
-    print("Metrics:")
-    print(classification_report(y_true, y_pred))
-    print(f"{p}/{t}" + ("!" if p != t else "") for p, t in zip(y_pred, y_true))
+def train_binary_model():
+    concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
+
+    batch_size = 192
+    train_generator = ToBinaryGenerator(
+        concat_machine.train, concat_hand.train, concat_out.train,
+        batch_size=batch_size,
+        shuffle=True,
+        truncate=True
+    )
+
+    dev_generator = ToBinaryGenerator(
+        concat_machine.test, concat_hand.test, concat_out.test,
+        batch_size=batch_size,
+        shuffle=True,
+        truncate=True
+    )
+
+    ft_train_generator = ToBinaryGenerator(
+        real_training.train,
+        batch_size=batch_size,
+        shuffle=True,
+        truncate=True
+    )
+
+    ft_dev_generator = ToBinaryGenerator(
+        real_training.test,
+        batch_size=batch_size,
+        shuffle=True,
+        truncate=True
+    )
+
+    test_generator = ToBinaryGenerator(
+        real_validation.test,
+        batch_size=batch_size,
+        shuffle=False
+    )
+
+    # Run training on the GPU
+    with tf.device('/CPU:0'):
+        # Keras Model
+        print("Creating model..")
+        model = get_cnn_binary_model()
+
+        # Hyperparameters
+        epochs = 10
+        ft_epochs = 10
+        learning_rate = 0.001
+
+        def mean_pred(_, y):
+            return keras.backend.mean(y)
+
+        print("Compiling model..")
+        model.compile(
+            loss=keras.losses.binary_crossentropy,
+            optimizer=keras.optimizers.Adagrad(lr=learning_rate),
+            metrics=[keras.metrics.binary_accuracy, 'mse', mean_pred],
+        )
+        print(model.summary())
+
+        print("Training model")
+        model.fit_generator(
+            train_generator, validation_data=dev_generator,
+            epochs=epochs,
+            use_multiprocessing=True,
+            workers=8,
+            callbacks=[
+                ModelCheckpoint("model/binary_model.{epoch:02d}.hdf5", period=2),
+                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
+            ]
+        )
+
+        print("Finetuning model")
+        model.fit_generator(
+            ft_train_generator, validation_data=ft_train_generator,
+            epochs=ft_epochs,
+            use_multiprocessing=True,
+            workers=8,
+            callbacks=[
+                ModelCheckpoint("model/binary_model.ft.{epoch:02d}.hdf5", period=2),
+                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
+            ]
+        )
+
+        model.save("model/binary_model.ft.final.hdf5")
+
+        print("Evaluating")
+        print(list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
+        print(list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
+        print(list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
+        evaluate_and_plot(model, test_generator)
 
 
-def evaluate_and_plot(model: Sequential, test_generator: SimpleDataGenerator):
-    print("Evaluating")
-    x = np.expand_dims(test_generator.data, 3)
-    y_true = test_generator.labels
-    y_pred = np.array(model.predict_classes(x))
-    print(f"Validation accuracy: {np.mean((y_true == y_pred).astype(np.float))}")
-    print("Validation metrics:")
+def evaluate(model: Sequential, test_generator: BaseDataGenerator, binary=False):
+    x = np.expand_dims(test_generator.get_data(), 3).astype(np.float) / 255
+    y_true = test_generator.get_labels()
+    if binary:
+        y_pred = (model.predict(x) >= 0.5).astype(np.int).squeeze()
+    else:
+        y_pred = np.array(model.predict_classes(x))
+
+    print(list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
     print(classification_report(y_true, y_pred))
     print(f"{p}/{t}" + ("!" if p != t else "") for p, t in zip(y_pred, y_true))
+    return x, y_true, y_pred
+
+
+def evaluate_and_plot(model: Sequential, test_generator: BaseDataGenerator, binary=False):
+    x, y_true, y_pred = evaluate(model, test_generator, binary)
     y = get_labels(y_true, y_pred)
     zipped = list(zip(x, y))
     for idx in range(0, len(zipped), 81):
-        plot_9x9_grid(zipped[idx:idx + 81], f"Validation set {idx // 81 + 1}")
+        plot_9x9_grid(zipped[idx:idx + 81], f"{'binary' if binary else 'full'}_validation_set_{idx // 81 + 1}")
 
 
 def load_and_evaluate():
@@ -548,8 +603,9 @@ def load_and_evaluate():
 
 if __name__ == '__main__':
     # CharacterRenderer().prerender_all(mode='L')
-    generate_base_datasets()
-    generate_transformed_datasets()
-    create_data_overview()
+    # generate_base_datasets()
+    # generate_transformed_datasets()
+    # create_data_overview()
+    # train_binary_model()
     train_cnn()
-    load_and_evaluate()
+    # load_and_evaluate()
