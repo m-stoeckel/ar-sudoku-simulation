@@ -158,8 +158,8 @@ class GrainNoise(SaltAndPepperNoise):
         return np.clip(img, 0, 255).astype(np.uint8)
 
 
-class EmbedInGrid(ImageTransform):
-    def __init__(self, inset=0.2, thickness=1):
+class EmbedInRectangle(ImageTransform):
+    def __init__(self, inset=0.2):
         """
         Embeds images in a white rectangle.
 
@@ -171,9 +171,51 @@ class EmbedInGrid(ImageTransform):
         :type inset: float
         """
         super().__init__()
-        self.thickness = thickness
         self.inset = inset
         self.offset = inset / 2
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        if len(img.shape) == 3:
+            grid_image_shape = (
+                int(img.shape[0] + self.inset * img.shape[0]),
+                int(img.shape[1] + self.inset * img.shape[1]),
+                img.shape[2]
+            )
+        else:
+            grid_image_shape = (
+                int(img.shape[0] + self.inset * img.shape[0]),
+                int(img.shape[1] + self.inset * img.shape[1]),
+            )
+        grid_image = np.full(grid_image_shape, 255, dtype=np.uint8)
+        offset_x, offset_y = int(self.offset * img.shape[0]), int(self.offset * img.shape[1])
+        grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
+        cv2.rectangle(grid_image, (offset_x, offset_y),
+                      (grid_image.shape[0] - offset_x, grid_image.shape[1] - offset_y),
+                      Color.BLACK.value, thickness=int(img.shape[0] * 0.05))
+        return self.random_crop(grid_image, img.shape)
+
+    @staticmethod
+    def random_crop(grid_img, shape) -> np.ndarray:
+        offset = np.array(grid_img.shape) - np.array(shape)
+        offset_x = np.random.randint(0, offset[0])
+        offset_y = np.random.randint(0, offset[1])
+        return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]
+
+
+class EmbedInGrid(EmbedInRectangle):
+    def __init__(self, inset=0.2, thickness=1):
+        """
+        Embeds images in a white rectangle.
+
+        The given image is inserted into the center of a new, empty image with the given *inset*.
+        Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
+        original image size is performed and the new image is returned.
+
+        :param inset: The distance to inset the processed image by, in percent.
+        :type inset: float
+        """
+        self.thickness = thickness
+        super().__init__(inset)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         if self.inset > 0:
@@ -211,13 +253,6 @@ class EmbedInGrid(ImageTransform):
             return self.random_crop(grid_image, img.shape)
         else:
             return grid_image
-
-    @staticmethod
-    def random_crop(grid_img, shape) -> np.ndarray:
-        offset = np.array(grid_img.shape) - np.array(shape)
-        offset_x = np.random.randint(0, offset[0])
-        offset_y = np.random.randint(0, offset[1])
-        return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]
 
 
 class JPEGEncode(ImageTransform):

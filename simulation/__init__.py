@@ -1,5 +1,5 @@
+from .colors import Color, uint8_from_number
 from .digit import *
-from .transforms import *
 from .sudoku import *
 from .tests import *
-from .colors import *
+from .transforms import *

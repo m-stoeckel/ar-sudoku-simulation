@@ -1,5 +1,7 @@
 from unittest import TestCase
 
+import cv2
+import numpy as np
 from matplotlib import pyplot as plt
 
 from simulation.transforms import *

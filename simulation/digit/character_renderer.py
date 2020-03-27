@@ -7,8 +7,8 @@ import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 from p_tqdm import p_map
 
-from simulation.digit.fonts import Font
 from simulation import Color
+from simulation.digit.fonts import Font
 
 
 class CharacterRenderer:

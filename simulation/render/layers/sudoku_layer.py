@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from simulation.digit.dataset import MNIST, CuratedCharactersDataset
 from simulation import Color
+from simulation.digit.dataset import MNIST, CuratedCharactersDataset
 from simulation.render.layers import DigitalCompositionLayer
 
 DEBUG = True
