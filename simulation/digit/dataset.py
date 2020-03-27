@@ -1,4 +1,6 @@
+import json
 import os
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -386,8 +388,8 @@ class MNIST(CharacterDataset):
 
 class FilteredMNIST(MNIST):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, data_home="datasets/", shuffle=True):
+        super().__init__(data_home, shuffle)
         filtered = self.train_y > 0
         self.train_x = self.train_x[filtered]
         self.train_y = self.train_y[filtered]
@@ -412,7 +414,7 @@ class FilteredMNIST(MNIST):
         return self.train_x[np.random.choice(self.train_indices_by_number[digit - 1])]
 
 
-class ClassSeparateMNIST(MNIST):
+class ClassSeparateMNIST(FilteredMNIST):
     _digit_offset = 10
 
     def __init__(self, **kwargs):
@@ -621,3 +623,52 @@ class EmptyDataset(CharacterDataset):
         self.train_y = labels[:train_count]
         self.test_x = data[train_count:]
         self.test_y = labels[train_count:]
+
+
+class RealDataset(CharacterDataset):
+    def __init__(self, base_path, resolution=28, has_old_scheme=True):
+        self.base_path = Path(base_path)
+        self.has_old_scheme = has_old_scheme
+        super().__init__(resolution)
+
+    def _load(self):
+        images = []
+        labels = []
+        for el in sorted(set(os.listdir(self.base_path))):
+            folder_path = self.base_path / el
+            labels_path = folder_path / "labels.json"
+            if folder_path.is_dir() and labels_path.exists():
+                with open(labels_path, 'r', encoding="utf8") as fp:
+                    _labels = json.load(fp)["labels"]
+                    if len(_labels) != 81:
+                        print(f"{labels_path}: len={len(_labels)}", file=sys.stderr)
+                        continue
+                    labels.extend(_labels)
+                for i in range(81):
+                    img_path = folder_path / f"box_{i}.png"
+                    if not img_path.exists():
+                        print(f"{img_path} does not exist", file=sys.stderr)
+                        raise RuntimeError
+                    img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+                    img = cv2.resize(img, (28, 28), interpolation=cv2.INTER_LANCZOS4)
+                    images.append(img)
+
+        images = np.array(images, dtype=np.uint8)
+        labels = np.array(labels, dtype=int)
+        assert images.shape[0] == labels.shape[0]
+
+        if self.has_old_scheme:
+            idx_10 = labels == 10
+            idx_0 = labels == 0
+            labels[idx_0] = 10
+            labels[idx_10] = 0
+
+        self._split(images, labels)
+
+
+class RealValidationDataset(RealDataset):
+    def _split(self, data, labels):
+        self.train_x = np.empty(0, np.uint8)
+        self.train_y = np.empty(0, np.uint8)
+        self.test_x = data
+        self.test_y = labels
