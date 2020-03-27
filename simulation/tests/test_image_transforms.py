@@ -17,7 +17,7 @@ class ImageTransformTests(TestCase):
     def apply_transform(self, transform):
         for digit in [self.digit1, self.digit2]:
             tdigit = transform.apply(digit)
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1), facecolor="gray")
             fig.suptitle(transform.__class__.__name__, fontsize='8')
             ax1.axis('off')
             ax2.axis('off')
@@ -37,7 +37,11 @@ class ImageTransformTests(TestCase):
         plt.show()
 
     def test_EmbedInGrid(self):
-        transform = EmbedInGrid()
+        transform = EmbedInGrid(0)
+        self.apply_transform(transform)
+
+    def test_EmbedInRectangle(self):
+        transform = EmbedInRectangle()
         self.apply_transform(transform)
 
     def test_GaussianBlur(self):

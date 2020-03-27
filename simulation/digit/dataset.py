@@ -21,9 +21,9 @@ INTER_DOWN_FAST = cv2.INTER_AREA
 INTER_UP_HIGH = cv2.INTER_CUBIC
 INTER_UP_FAST = cv2.INTER_LINEAR
 
-# Classmap: {0: OUT, 1..9: #_MACHINE, 10: EMPTY, 11..19: #_HAND}
-CLASS_OUT = 10
+# Classmap: {0: EMPTY, 1..9: #_MACHINE, 10: OUT, 11..19: #_HAND}
 CLASS_EMPTY = 0
+CLASS_OUT = 10
 
 
 def strip_file_ext(path: str):
@@ -399,10 +399,6 @@ class FilteredMNIST(MNIST):
         self.train_indices_by_number = {i: np.flatnonzero(self.train_y == i) for i in range(1, 10)}
         self.test_indices_by_number = {i: np.flatnonzero(self.test_y == i) for i in range(1, 10)}
 
-        # Reduce all labels by one
-        self.train_y -= 1
-        self.test_y -= 1
-
     def get_random(self, digit: int) -> np.ndarray:
         """
         Get a random sample of the given digit.
@@ -519,7 +515,7 @@ class PrerenderedDigitDataset(CharacterDataset):
     default_digit_parent = "datasets/"
     default_digit_path = "datasets/digits/"
 
-    def __init__(self, digits_path="datasets/digits.zip", resolution=128, digit_count=915):
+    def __init__(self, digits_path="datasets/digits.zip", resolution=128, digit_count=915, **kwargs):
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
 
@@ -533,7 +529,7 @@ class PrerenderedDigitDataset(CharacterDataset):
         else:
             self.digit_path: Path = Path(digits_path)
 
-        super().__init__(resolution)
+        super().__init__(resolution, **kwargs)
 
     def _load(self):
         digit_count = 9 * self.digit_count
@@ -626,7 +622,7 @@ class EmptyDataset(CharacterDataset):
 
 
 class RealDataset(CharacterDataset):
-    def __init__(self, base_path, resolution=28, has_old_scheme=True):
+    def __init__(self, base_path, resolution=28, has_old_scheme=False):
         self.base_path = Path(base_path)
         self.has_old_scheme = has_old_scheme
         super().__init__(resolution)

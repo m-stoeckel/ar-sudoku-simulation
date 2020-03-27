@@ -244,7 +244,10 @@ class SimpleDataGenerator(keras.utils.Sequence):
         if to_simple_digit:
             indices = np.logical_and(self.labels > 9, self.labels != 10)
             self.labels[indices] -= 10
-            self.num_classes = 11
+            indices = self.labels != 10
+            self.data = self.data[indices]
+            self.labels = self.labels[indices]
+            self.num_classes = 10
         else:
             self.num_classes = 20
 

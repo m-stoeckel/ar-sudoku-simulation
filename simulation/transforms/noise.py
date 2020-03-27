@@ -1,3 +1,5 @@
+from typing import Union
+
 import cv2
 import numpy as np
 
@@ -101,7 +103,7 @@ class PoissonNoise(ImageTransform):
 
 
 class SaltAndPepperNoise(ImageTransform):
-    def __init__(self, amount=0.01, ratio=0.5):
+    def __init__(self, amount: Union[int, float] = 0.01, ratio=0.5):
         """
         Sets random single pixels to black or white white.
 
@@ -118,7 +120,10 @@ class SaltAndPepperNoise(ImageTransform):
     def apply(self, img: np.ndarray) -> np.ndarray:
         # Salt mode
         img = img.copy()
-        num_salt = int(np.ceil(self.amount * img.size * self.ratio))
+        if isinstance(self.amount, float) or self.amount < 1:
+            num_salt = int(np.ceil(self.amount * img.size * self.ratio))
+        else:
+            num_salt = int(np.ceil(self.amount * self.ratio))
         indices = (np.random.choice(np.arange(img.shape[0]), num_salt),
                    np.random.choice(np.arange(img.shape[1]), num_salt))
         img[indices] = 255
@@ -127,7 +132,10 @@ class SaltAndPepperNoise(ImageTransform):
             return img
 
         # Pepper mode
-        num_pepper = int(np.ceil(self.amount * img.size * (1. - self.ratio)))
+        if isinstance(self.amount, float) or self.amount < 1:
+            num_pepper = int(np.ceil(self.amount * img.size * (1. - self.ratio)))
+        else:
+            num_pepper = int(np.ceil(self.amount * (1. - self.ratio)))
         indices = (np.random.choice(np.arange(img.shape[0]), num_pepper),
                    np.random.choice(np.arange(img.shape[1]), num_pepper))
         img[indices] = 0
@@ -135,7 +143,7 @@ class SaltAndPepperNoise(ImageTransform):
 
 
 class GrainNoise(SaltAndPepperNoise):
-    def __init__(self, amount=0.0005, iterations=3, shape=(102, 102)):
+    def __init__(self, amount=0.0005, iterations=2, shape=(102, 102)):
         """
         Addes larger white grains.
 
@@ -159,7 +167,7 @@ class GrainNoise(SaltAndPepperNoise):
 
 
 class EmbedInRectangle(ImageTransform):
-    def __init__(self, inset=0.2):
+    def __init__(self, inset=0.1, thickness=1):
         """
         Embeds images in a white rectangle.
 
@@ -173,26 +181,41 @@ class EmbedInRectangle(ImageTransform):
         super().__init__()
         self.inset = inset
         self.offset = inset / 2
+        self.thickness = thickness
 
     def apply(self, img: np.ndarray) -> np.ndarray:
-        if len(img.shape) == 3:
-            grid_image_shape = (
-                int(img.shape[0] + self.inset * img.shape[0]),
-                int(img.shape[1] + self.inset * img.shape[1]),
-                img.shape[2]
-            )
+        if self.inset > 0:
+            if len(img.shape) == 3:
+                grid_image_shape = (
+                    int(img.shape[0] + self.inset * img.shape[0]),
+                    int(img.shape[1] + self.inset * img.shape[1]),
+                    img.shape[2]
+                )
+            else:
+                grid_image_shape = (
+                    int(img.shape[0] + self.inset * img.shape[0]),
+                    int(img.shape[1] + self.inset * img.shape[1]),
+                )
         else:
-            grid_image_shape = (
-                int(img.shape[0] + self.inset * img.shape[0]),
-                int(img.shape[1] + self.inset * img.shape[1]),
-            )
-        grid_image = np.full(grid_image_shape, 255, dtype=np.uint8)
-        offset_x, offset_y = int(self.offset * img.shape[0]), int(self.offset * img.shape[1])
+            grid_image_shape = img.shape
+
+        grid_image = np.full(grid_image_shape, 0, dtype=np.uint8)
+        offset_x, offset_y = int(abs(self.offset * img.shape[0])), int(abs(self.offset * img.shape[1]))
+
+        if self.inset > 0:
+            grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
+        else:
+            grid_image = img.copy()
+
         grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
         cv2.rectangle(grid_image, (offset_x, offset_y),
-                      (grid_image.shape[0] - offset_x, grid_image.shape[1] - offset_y),
-                      Color.BLACK.value, thickness=int(img.shape[0] * 0.05))
-        return self.random_crop(grid_image, img.shape)
+                      (grid_image.shape[0] - offset_x - 1, grid_image.shape[1] - offset_y - 1),
+                      Color.WHITE.value, thickness=self.thickness)
+
+        if self.inset > 0:
+            return self.random_crop(grid_image, img.shape)
+        else:
+            return grid_image
 
     @staticmethod
     def random_crop(grid_img, shape) -> np.ndarray:
@@ -214,8 +237,7 @@ class EmbedInGrid(EmbedInRectangle):
         :param inset: The distance to inset the processed image by, in percent.
         :type inset: float
         """
-        self.thickness = thickness
-        super().__init__(inset)
+        super().__init__(inset, thickness)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         if self.inset > 0:
@@ -243,10 +265,12 @@ class EmbedInGrid(EmbedInRectangle):
 
         # Draw grid lines
         cv2.line(grid_image, (offset_x, 0), (offset_x, grid_image.shape[0]), Color.WHITE.value, self.thickness)
-        cv2.line(grid_image, (grid_image.shape[0] - offset_x, 0), (grid_image.shape[0] - offset_x, grid_image.shape[0]),
+        cv2.line(grid_image, (grid_image.shape[0] - offset_x - 1, 0),
+                 (grid_image.shape[0] - offset_x - 1, grid_image.shape[0]),
                  Color.WHITE.value, self.thickness)
         cv2.line(grid_image, (0, offset_y), (grid_image.shape[1], offset_y), Color.WHITE.value, self.thickness)
-        cv2.line(grid_image, (0, grid_image.shape[1] - offset_y), (grid_image.shape[1], grid_image.shape[1] - offset_y),
+        cv2.line(grid_image, (0, grid_image.shape[1] - offset_y - 1),
+                 (grid_image.shape[1], grid_image.shape[1] - offset_y - 1),
                  Color.WHITE.value, self.thickness)
 
         if self.inset > 0:
