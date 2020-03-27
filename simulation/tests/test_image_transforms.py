@@ -7,8 +7,21 @@ from simulation.transforms import *
 
 class ImageTransformTests(TestCase):
     def setUp(self):
-        self.digit = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
-        self.digit = cv2.resize(self.digit, (28, 28))
+        self.digit1 = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
+        self.digit1 = cv2.resize(self.digit1, (28, 28))
+        self.digit2 = cv2.imread("../../datasets/curated/50/15.png", cv2.IMREAD_GRAYSCALE)
+        self.digit2 = cv2.resize(self.digit2, (28, 28))
+
+    def apply_transform(self, transform):
+        for digit in [self.digit1, self.digit2]:
+            tdigit = transform.apply(digit)
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
+            fig.suptitle(transform.__class__.__name__, fontsize='8')
+            ax1.axis('off')
+            ax2.axis('off')
+            ax1.imshow(digit, cmap="gray", interpolation='none')
+            ax2.imshow(tdigit, cmap="gray", interpolation='none')
+            plt.show()
 
     def test_with_sudoku(self):
         img = cv2.imread("../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
@@ -86,11 +99,11 @@ class ImageTransformTests(TestCase):
         self.apply_transform(transform)
 
     def test_Dilate2(self):
-        b_digit = self.digit.copy()
-        self.digit = SaltAndPepperNoise().apply(self.digit)
+        b_digit = self.digit1.copy()
+        self.digit1 = SaltAndPepperNoise().apply(self.digit1)
         transform = Dilate()
         self.apply_transform(transform)
-        self.digit = b_digit
+        self.digit1 = b_digit
 
     def test_RescaleIntermediateTransforms(self):
         transform = RescaleIntermediateTransforms(
@@ -99,16 +112,6 @@ class ImageTransformTests(TestCase):
             inter_initial=cv2.INTER_LINEAR, inter_consecutive=cv2.INTER_AREA
         )
         self.apply_transform(transform)
-
-    def apply_transform(self, transform):
-        tdigit = transform.apply(self.digit)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2, 1))
-        fig.suptitle(transform.__class__.__name__, fontsize='8')
-        ax1.axis('off')
-        ax2.axis('off')
-        ax1.imshow(self.digit, cmap="gray", interpolation='none')
-        ax2.imshow(tdigit, cmap="gray", interpolation='none')
-        plt.show()
 
     def generate_composition(self):
         transform = RandomPerspectiveTransform()
