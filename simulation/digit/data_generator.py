@@ -182,10 +182,10 @@ class BalancedDataGenerator(keras.utils.Sequence):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.machine_dataset[0][indices]
+        x = self.machine_dataset[0][indices]
         y = self.machine_dataset[1][indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
     def __handwritten_data_generation(self, indices):
         """
@@ -193,10 +193,10 @@ class BalancedDataGenerator(keras.utils.Sequence):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.handwritten_dataset[0][indices]
+        x = self.handwritten_dataset[0][indices]
         y = self.handwritten_dataset[1][indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
     def __out_data_generation(self, indices):
         """
@@ -204,10 +204,10 @@ class BalancedDataGenerator(keras.utils.Sequence):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.out_dataset[0][indices]
+        x = self.out_dataset[0][indices]
         y = self.out_dataset[1][indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
 
 
 class SimpleDataGenerator(keras.utils.Sequence):
@@ -294,7 +294,7 @@ class SimpleDataGenerator(keras.utils.Sequence):
         :param indices: The indices to select
         :return: A tuple of a digit array and a class categorical array
         """
-        X = self.data[indices]
+        x = self.data[indices]
         y = self.labels[indices]
 
-        return X, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)

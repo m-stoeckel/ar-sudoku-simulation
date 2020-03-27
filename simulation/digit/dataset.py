@@ -193,7 +193,7 @@ class CharacterDataset:
 
         return new_digits
 
-    def cvtColor(self, mode=cv2.COLOR_GRAY2BGRA):
+    def cvt_color(self, mode=cv2.COLOR_GRAY2BGRA):
         """
         Convert all images in the dataset to the specified colorspace.
         If mode is 'cv2.COLOR_GRAY2BGRA', optimized code is used, which also assigns correct alpha values.

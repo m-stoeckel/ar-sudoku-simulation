@@ -63,7 +63,7 @@ class TestPaperRenderer(TestCase):
 
         digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", resolution=res)
         digits.invert()
-        digits.cvtColor(cv2.COLOR_GRAY2BGRA)
+        digits.cvt_color(cv2.COLOR_GRAY2BGRA)
 
         digit = digits.get_ordered(1, 0)
         renderer.drawing_layer.add_element(digit)
