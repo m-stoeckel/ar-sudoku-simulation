@@ -16,7 +16,6 @@ tf.get_logger().setLevel('ERROR')
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-
 BASE_DATASET_NAMES = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset",
                       "base_real_dataset", "validation_real_dataset"]
 TRANSFORMED_DATASET_NAMES = ["train_machine_dataset", "train_hand_dataset", "train_out_dataset",
@@ -357,13 +356,16 @@ def get_cnn_binary_model():
     return model
 
 
-def train_cnn(to_simple_digit=True):
+def train_cnn(path="model/", to_simple_digit=False):
+    os.makedirs(path, exist_ok=True)
+
     print("Loading data..")
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     batch_size = 192
     train_generator = SimpleDataGenerator(
         concat_machine.train, concat_hand.train, concat_out.train,
+        # concat_machine.train, concat_hand.train,
         batch_size=batch_size,
         shuffle=True,
         to_simple_digit=to_simple_digit
@@ -371,6 +373,7 @@ def train_cnn(to_simple_digit=True):
 
     dev_generator = SimpleDataGenerator(
         concat_machine.test, concat_hand.test, concat_out.test,
+        # concat_machine.test, concat_hand.test,
         batch_size=batch_size,
         shuffle=True,
         to_simple_digit=to_simple_digit
@@ -423,7 +426,6 @@ def train_cnn(to_simple_digit=True):
             use_multiprocessing=True,
             workers=8,
             callbacks=[
-                ModelCheckpoint("model/cnn_model.{epoch:02d}.hdf5", period=2),
                 EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
             ]
         )
@@ -435,20 +437,21 @@ def train_cnn(to_simple_digit=True):
             use_multiprocessing=True,
             workers=8,
             callbacks=[
-                ModelCheckpoint("model/cnn_model.ft.{epoch:02d}.hdf5", period=2),
                 EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
             ]
         )
 
-        model.save("model/cnn_model.ft.final.hdf5")
+        model.save(path + "cnn_model.ft.final.hdf5")
 
         print("Evaluating")
-        print(list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
-        print(list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
+        print("Training dev", list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
+        print("Finetuning dev", list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
+        print("Test", list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
         evaluate_and_plot(model, test_generator)
 
 
 def train_binary_model():
+    os.makedirs("model_binary_finetuning", exist_ok=True)
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     batch_size = 192
@@ -515,8 +518,7 @@ def train_binary_model():
             use_multiprocessing=True,
             workers=8,
             callbacks=[
-                ModelCheckpoint("model/binary_model.{epoch:02d}.hdf5", period=2),
-                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
+                EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
             ]
         )
 
@@ -527,17 +529,16 @@ def train_binary_model():
             use_multiprocessing=True,
             workers=8,
             callbacks=[
-                ModelCheckpoint("model/binary_model.ft.{epoch:02d}.hdf5", period=2),
-                EarlyStopping(monitor='val_categorical_accuracy', restore_best_weights=True),
+                EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
             ]
         )
 
-        model.save("model/binary_model.ft.final.hdf5")
+        model.save("model_binary_finetuning/binary_model.ft.final.hdf5")
 
         print("Evaluating")
-        print(list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
-        print(list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
-        print(list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
+        print("Training dev", list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
+        print("Finetuning dev", list(zip(model.metrics_names, model.evaluate_generator(ft_dev_generator))))
+        print("Test", list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
         evaluate_and_plot(model, test_generator)
 
 
@@ -564,29 +565,8 @@ def evaluate_and_plot(model: Sequential, test_generator: BaseDataGenerator, bina
 
 
 def load_and_evaluate():
-    model = keras.models.load_model("model/cnn_model.ft.final.hdf5")
+    model = keras.models.load_model("model_simple_finetuning/cnn_model.ft.final.hdf5")
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
-
-    train_generator = SimpleDataGenerator(
-        concat_machine.train, concat_hand.train, concat_out.train,
-        batch_size=64,
-        shuffle=True,
-        to_simple_digit=True
-    )
-
-    dev_generator = SimpleDataGenerator(
-        concat_machine.test, concat_hand.test, concat_out.test,
-        batch_size=64,
-        shuffle=True,
-        to_simple_digit=True
-    )
-
-    ft_dev_generator = SimpleDataGenerator(
-        real_training.test,
-        batch_size=64,
-        shuffle=True,
-        to_simple_digit=True
-    )
 
     test_generator = SimpleDataGenerator(
         real_validation.test,
@@ -595,9 +575,6 @@ def load_and_evaluate():
         to_simple_digit=True
     )
 
-    evaluate(model, train_generator)
-    evaluate(model, dev_generator)
-    evaluate(model, ft_dev_generator)
     evaluate(model, test_generator)
 
 
@@ -606,6 +583,7 @@ if __name__ == '__main__':
     # generate_base_datasets()
     # generate_transformed_datasets()
     # create_data_overview()
-    # train_binary_model()
-    train_cnn()
+    train_binary_model()
+    train_cnn("model_full_finetuning/", False)
+    train_cnn("model_simple_finetuning/", True)
     # load_and_evaluate()
