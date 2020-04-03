@@ -218,11 +218,6 @@ def evaluate_tflite_model(tflite_model, test_generator):
 
 
 if __name__ == '__main__':
-    # CharacterRenderer().prerender_all(mode='L')
-    # generate_base_datasets()
-    # generate_transformed_datasets()
-    # create_data_overview()
-
     train_cnn("model_simple_finetuning/", True)
     train_cnn("model_full_finetuning/", False)
 

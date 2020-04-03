@@ -10,7 +10,7 @@ from tqdm import tqdm
 from simulation import PrerenderedDigitDataset, PrerenderedCharactersDataset, ConcatDataset, \
     ClassSeparateCuratedCharactersDataset, ClassSeparateMNIST, EmptyDataset, RealDataset, RealValidationDataset, \
     CharacterDataset, RandomPerspectiveTransform, RescaleIntermediateTransforms, JPEGEncode, \
-    SaltAndPepperNoise, Dilate, EmbedInRectangle, EmbedInGrid, GrainNoise, PoissonNoise
+    SaltAndPepperNoise, Dilate, EmbedInRectangle, EmbedInGrid, GrainNoise, PoissonNoise, CharacterRenderer
 
 BASE_DATASET_NAMES = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset",
                       "base_real_dataset", "validation_real_dataset"]
@@ -256,3 +256,10 @@ def plot_9x9_grid(zipped, title: str):
             axes[i][j].set_title(str(label))
     plt.savefig(f"{title.replace(' ', '_')}.png")
     plt.show()
+
+
+if __name__ == '__main__':
+    CharacterRenderer().prerender_all(mode='L')
+    generate_base_datasets()
+    generate_transformed_datasets()
+    create_data_overview()
