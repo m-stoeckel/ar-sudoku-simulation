@@ -6,7 +6,7 @@ Subpackages
 
 .. toctree::
 
-   simulation.digit
+   simulation.data
    simulation.render
    simulation.sudoku
    simulation.tests

@@ -1,37 +1,37 @@
-simulation.digit package
+simulation.data package
 ========================
 
 Submodules
 ----------
 
-simulation.digit.character\_renderer module
+simulation.data.character\_renderer module
 -------------------------------------------
 
-.. automodule:: simulation.digit.character_renderer
+.. automodule:: simulation.data.character_renderer
    :members:
    :undoc-members:
    :show-inheritance:
 
-simulation.digit.data\_generator module
+simulation.data.data\_generator module
 ---------------------------------------
 
-.. automodule:: simulation.digit.data_generator
+.. automodule:: simulation.data.data_generator
    :members:
    :undoc-members:
    :show-inheritance:
 
-simulation.digit.dataset module
+simulation.data.dataset module
 -------------------------------
 
-.. automodule:: simulation.digit.dataset
+.. automodule:: simulation.data.dataset
    :members:
    :undoc-members:
    :show-inheritance:
 
-simulation.digit.fonts module
+simulation.data.fonts module
 -----------------------------
 
-.. automodule:: simulation.digit.fonts
+.. automodule:: simulation.data.fonts
    :members:
    :undoc-members:
    :show-inheritance:
@@ -40,7 +40,7 @@ simulation.digit.fonts module
 Module contents
 ---------------
 
-.. automodule:: simulation.digit
+.. automodule:: simulation.data
    :members:
    :undoc-members:
    :show-inheritance:
