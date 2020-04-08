@@ -195,14 +195,14 @@ def evaluate_tflite_model(tflite_model, test_generator):
     prediction_digits = []
     for test_image in test_images:
         # Pre-processing: add batch dimension and convert to float32 to match with
-        # the model's input data format.
+        # the model's input digit format.
         test_image = np.expand_dims(test_image, axis=0).astype(np.float32)
         interpreter.set_tensor(input_tensor_index, test_image)
 
         # Run inference.
         interpreter.invoke()
 
-        # Post-processing: remove batch dimension and find the data with highest
+        # Post-processing: remove batch dimension and find the digit with highest
         # probability.
         digit = np.argmax(output()[0])
         prediction_digits.append(digit)
