@@ -3,8 +3,8 @@ from unittest import TestCase
 import numpy as np
 from matplotlib import pyplot as plt
 
-from simulation.digit import BalancedDataGenerator
-from simulation.digit.dataset import PrerenderedDigitDataset, CuratedCharactersDataset, \
+from simulation.data import BalancedDataGenerator
+from simulation.data.dataset import PrerenderedDigitDataset, CuratedCharactersDataset, \
     ClassSeparateMNIST, ConcatDataset, PrerenderedCharactersDataset, EmptyDataset
 
 
@@ -55,7 +55,7 @@ class Test(TestCase):
 
         batch_size = 12
         d = BalancedDataGenerator(
-            concat_machine, concat_hand, concat_out,
+            concat_machine.train, concat_hand.train, concat_out.train,
             batch_size=batch_size,
             shuffle=True
         )

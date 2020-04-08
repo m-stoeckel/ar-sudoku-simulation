@@ -2,9 +2,8 @@ import keras
 from keras import Sequential
 from keras.layers import Dense, Dropout
 
-from generate_datasets import load_datasets
+from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
 from simulation import BalancedDataGenerator
-from training import TRANSFORMED_DATASET_NAMES
 
 
 def get_linear_model(n_classes=18):

@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report
 from tensorflow.keras.models import load_model
 
 from generate_datasets import load_datasets, get_labels, plot_9x9_grid, TRANSFORMED_DATASET_NAMES
-from simulation.digit.data_generator import SimpleDataGenerator, BaseDataGenerator
+from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -202,7 +202,7 @@ def evaluate_tflite_model(tflite_model, test_generator):
         # Run inference.
         interpreter.invoke()
 
-        # Post-processing: remove batch dimension and find the digit with highest
+        # Post-processing: remove batch dimension and find the data with highest
         # probability.
         digit = np.argmax(output()[0])
         prediction_digits.append(digit)

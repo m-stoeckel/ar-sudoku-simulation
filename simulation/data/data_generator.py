@@ -4,7 +4,7 @@ from typing import Tuple
 import keras
 import numpy as np
 
-from simulation.digit.dataset import CharacterDataset
+from simulation.data.dataset import CharacterDataset
 
 
 @DeprecationWarning

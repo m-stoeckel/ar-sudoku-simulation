@@ -6,9 +6,9 @@ from keras import Sequential
 from keras.callbacks import EarlyStopping
 from keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Flatten, Dense, Dropout
 
-from generate_datasets import load_datasets
-from simulation.digit.data_generator import ToBinaryGenerator
-from training import TRANSFORMED_DATASET_NAMES, evaluate_and_plot
+from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
+from simulation.data.data_generator import ToBinaryGenerator
+from training import evaluate_and_plot
 
 
 def get_cnn_binary_model():

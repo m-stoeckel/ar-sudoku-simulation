@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from simulation.digit.dataset import CuratedCharactersDataset
+from simulation.data.dataset import CuratedCharactersDataset
 from simulation.render import DigitalCompositionLayer, SubstrateLayer
 from simulation.render import DigitalCompositionMethod
 from simulation.render import LayeredPaperRenderer
