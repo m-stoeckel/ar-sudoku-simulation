@@ -1,7 +1,7 @@
 import warnings
 from typing import Tuple
 
-import keras
+import tensorflow.keras as keras
 import numpy as np
 
 from simulation.data.dataset import CharacterDataset

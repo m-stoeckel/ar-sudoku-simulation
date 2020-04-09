@@ -1,23 +1,37 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # or any {'0', '1', '2'}
 
-import keras
+from typing import Tuple
 import numpy as np
 import tensorflow as tf
-from keras import Sequential
-from keras.callbacks import EarlyStopping
-from keras.layers import *
+import tensorflow.keras as keras
 from sklearn.metrics import classification_report
-from tensorflow.keras.models import load_model
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import load_model, save_model
 
 from generate_datasets import load_datasets, get_labels, plot_9x9_grid, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def train_cnn(path="model/", to_simple_digit=False):
+    """
+    Train the CNN model and save it under the given path.
+
+    The method first loads the models using *generate_datasets.py* methods. Then the model is trained and saved and
+    finally evaluated.
+
+    :param path: The directory to save the trained model to.
+    :type path: str
+    :param to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition.
+    :type to_simple_digit: bool
+    :return: None
+    :rtype: None
+    """
     os.makedirs(path, exist_ok=True)
 
     print("Loading data..")
@@ -85,41 +99,37 @@ def train_cnn(path="model/", to_simple_digit=False):
         model.add(Dense(train_generator.num_classes, activation='softmax'))
 
         # Hyperparameters
-        epochs = 50
-        ft_epochs = 30
+        epochs = 100
+        ft_epochs = 100
 
         print("Compiling model..")
         model.compile(
             loss=keras.losses.CategoricalCrossentropy(from_logits=True),
             optimizer=keras.optimizers.Adagrad(),
-            metrics=['accuracy'],
+            metrics=['accuracy']
         )
         print(model.summary())
 
         print("Training model")
-        model.fit_generator(
+        model.fit(
             train_generator, validation_data=dev_generator,
             epochs=epochs,
-            use_multiprocessing=True,
-            workers=8,
             callbacks=[
-                EarlyStopping(monitor='accuracy', restore_best_weights=True, patience=3),
+                EarlyStopping(monitor='accuracy', restore_best_weights=True, patience=3, min_delta=0.0001),
             ]
         )
 
         print("Finetuning model")
-        model.fit_generator(
+        model.fit(
             ft_train_generator, validation_data=ft_train_generator,
             epochs=ft_epochs,
-            use_multiprocessing=True,
-            workers=8,
             callbacks=[
-                EarlyStopping(monitor='accuracy', restore_best_weights=True),
+                EarlyStopping(monitor='accuracy', restore_best_weights=True, patience=3, min_delta=0.0001),
             ]
         )
 
         print("Saving keras model")
-        model.save(path + "model.hdf5", include_optimizer=False)
+        save_model(model, path + "model.hdf5", include_optimizer=False)
 
         print("Evaluating keras model")
         print("Training dev", list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
@@ -128,7 +138,19 @@ def train_cnn(path="model/", to_simple_digit=False):
         # evaluate_and_plot(model, test_generator)
 
 
-def convert_to_tflite(model, path, test_generator):
+def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator):
+    """
+    Converts a Keras model to a tf.lite byte model.
+
+    :param model: The Keras model to convert.
+    :type model: Model
+    :param path: The directory path for the model.
+    :type path: str
+    :param test_generator: The generator for test files.
+    :type test_generator: BaseDataGenerator
+    :return: None
+    :rtype: None
+    """
     print("Converting to TFLite model")
     converter: tf.lite.TFLiteConverter = tf.lite.TFLiteConverter.from_keras_model(model)
     tflite_float_model = converter.convert()
@@ -144,7 +166,23 @@ def convert_to_tflite(model, path, test_generator):
     print(f"TFLite quantized model accurracy: {evaluate_tflite_model(tflite_quantized_model, test_generator):0.02f}")
 
 
-def evaluate(model: Sequential, test_generator: BaseDataGenerator, binary=False):
+def evaluate(
+        model: Model,
+        test_generator: BaseDataGenerator,
+        binary=False
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Evaluate a given model with the given generator.
+
+    :param model: The Keras model to evaluate.
+    :type model: Model
+    :param test_generator: The generator for test files.
+    :type test_generator: BaseDataGenerator
+    :param binary:
+    :type binary:
+    :return: A
+    :rtype: Tuple[np.ndarray, np.ndarray, np.ndarray]
+    """
     x = np.expand_dims(test_generator.get_data(), 3).astype(np.float) / 255
     y_true = test_generator.get_labels()
     if binary:
@@ -158,7 +196,19 @@ def evaluate(model: Sequential, test_generator: BaseDataGenerator, binary=False)
     return x, y_true, y_pred
 
 
-def evaluate_and_plot(model: Sequential, test_generator: BaseDataGenerator, binary=False):
+def evaluate_and_plot(model: Model, test_generator: BaseDataGenerator, binary=False):
+    """
+    Evaluate a given model and plot the results on the test_generator to a set of files.
+
+    :param model: The model to evaluate.
+    :type model: Model
+    :param test_generator: The generator for test files.
+    :type test_generator: BaseDataGenerator
+    :param binary: If True, the given model is a binary recognition model.
+    :type binary: bool
+    :return: None
+    :rtype: None
+    """
     x, y_true, y_pred = evaluate(model, test_generator, binary)
     y = get_labels(y_true, y_pred)
     zipped = list(zip(x, y))
@@ -166,8 +216,16 @@ def evaluate_and_plot(model: Sequential, test_generator: BaseDataGenerator, bina
         plot_9x9_grid(zipped[idx:idx + 81], f"{'binary' if binary else 'full'}_validation_set_{idx // 81 + 1}")
 
 
-def load_and_evaluate():
-    model = keras.models.load_model("model_simple_finetuning/cnn_model.ft.final.hdf5")
+def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"):
+    """
+    Load and evaluate a model at the given file path.
+
+    :param filepath:
+    :type filepath:
+    :return:
+    :rtype:
+    """
+    model = keras.models.load_model(filepath)
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     test_generator = SimpleDataGenerator(
@@ -181,7 +239,7 @@ def load_and_evaluate():
 
 
 # A helper function to evaluate the TF Lite model using "test" dataset.
-def evaluate_tflite_model(tflite_model, test_generator):
+def evaluate_tflite_model(tflite_model, test_generator: BaseDataGenerator):
     test_images = np.expand_dims(test_generator.get_data(), 3).astype(np.float) / 255
     test_labels = test_generator.get_labels()
 
@@ -221,10 +279,9 @@ if __name__ == '__main__':
     train_cnn("model_simple_finetuning/", True)
     train_cnn("model_full_finetuning/", False)
 
-    real_validation, = load_datasets(TRANSFORMED_DATASET_NAMES[-1])
-
+    validation = load_datasets([TRANSFORMED_DATASET_NAMES[-1]])[0]
     test_generator = SimpleDataGenerator(
-        real_validation.test,
+        validation.test,
         batch_size=64,
         shuffle=False,
         to_simple_digit=True
@@ -233,7 +290,7 @@ if __name__ == '__main__':
     convert_to_tflite(model, "model_simple_finetuning/", test_generator)
 
     test_generator = SimpleDataGenerator(
-        real_validation.test,
+        validation.test,
         batch_size=64,
         shuffle=False,
         to_simple_digit=False

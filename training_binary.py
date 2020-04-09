@@ -1,10 +1,11 @@
 import os
 
-import keras
+
 import tensorflow as tf
-from keras import Sequential
-from keras.callbacks import EarlyStopping
-from keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Flatten, Dense, Dropout
+import tensorflow.keras as keras
+from tensorflow.keras import Sequential
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Flatten, Dense, Dropout
 
 from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import ToBinaryGenerator

@@ -12,12 +12,33 @@ from simulation.data.fonts import Font
 
 
 class CharacterRenderer:
+    """
+    A simple class to render TrueType fonts.
+    """
     char_list = list(u"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-!?(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
+        """
+        Constructor for the CharacterRenderer
+
+        :param render_resolution: The width and height of the output images. Default: 128.
+        :type render_resolution: Union[int, Tuple[int, int]]
+        """
         self.render_resolution = get_resolution(render_resolution)
 
-    def render_character(self, char, font, mode='RGBA'):
+    def render_character(self, char, font, mode='RGBA') -> np.ndarray:
+        """
+        Render a single character with a given font.
+
+        :param char: The character to render.
+        :type char: str
+        :param font: The TrueType font path.
+        :type font: str
+        :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
+        :type mode: str
+        :return: The rendered image as a numpy array.
+        :rtype: numpy.ndarray
+        """
         if mode == 'RGBA':
             char_img = Image.new(mode, self.render_resolution)
             draw_color = Color.BLACK.value
@@ -32,6 +53,17 @@ class CharacterRenderer:
         return char_img
 
     def prerender_all(self, base_dir=Path("."), mode='RGBA'):
+        """
+        Render all characters of the *char_list* and save the images with the given mode.
+
+        :param base_dir: The base path of the project. The images will be saved in the directory
+            '{base_path}/datasets/characters/' in a separate folder for each character.
+        :type base_dir: Path
+        :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
+        :type mode: str
+        :return: None
+        :rtype: None
+        """
         character_dir = base_dir / "datasets/characters/"
         character_dir.mkdir(exist_ok=True)
         font_list = list(Font)

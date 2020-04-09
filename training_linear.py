@@ -1,6 +1,6 @@
-import keras
-from keras import Sequential
-from keras.layers import Dense, Dropout
+import tensorflow.keras as keras
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Dropout
 
 from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
 from simulation import BalancedDataGenerator
