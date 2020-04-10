@@ -1,8 +1,8 @@
 import warnings
 from typing import Tuple
 
-import tensorflow.keras as keras
 import numpy as np
+import tensorflow.keras as keras
 
 from simulation.data.dataset import CharacterDataset
 
@@ -73,7 +73,7 @@ class BalancedDataGenerator(BaseDataGenerator):
             num_classes=20
     ):
         """
-
+        TODO: comment
         :param datasets:
         :type datasets:
         :param batch_size:
@@ -143,12 +143,9 @@ class BalancedDataGenerator(BaseDataGenerator):
         # Generate data
         xs, ys = self._data_generation(indices)
 
-        # Stack data and convert images to float
-        x = np.vstack(xs).astype(np.float32)
+        # Stack data, convert images to float and scale to 0..1
+        x = np.vstack(xs).astype(np.float32) / 255.
         y = np.hstack(ys)
-
-        # Scale x to 0..1
-        x /= 255.
 
         if self.flatten:
             shape = x.shape
@@ -172,11 +169,14 @@ class BalancedDataGenerator(BaseDataGenerator):
         xs, ys = [], []
         for i in range(self.num_datasets):
             xs.append(self.datasets[i][indices[i]])
-            ys.append(keras.utils.to_categorical(self.labels[i][indices[i]], num_classes=self.num_classes))
+            ys.append(self.labels[i][indices[i]])
         return tuple(xs), tuple(ys)
 
     def get_data(self):
-        return np.vstack(tuple([dataset[0] for dataset in self.datasets]))
+        data = np.vstack(tuple([dataset[0] for dataset in self.datasets]))
+        data = data[:, :, :, np.newaxis]
+        data = data.astype(np.float32) / 255.
+        return data
 
     def get_labels(self):
         return np.hstack(tuple([dataset[1] for dataset in self.datasets]))
@@ -190,7 +190,7 @@ class ToBinaryGenerator(BalancedDataGenerator):
             **kwargs
     ):
         """
-
+        TODO: comment
         :param datasets:
         :type datasets:
         :param class_to_match:
@@ -221,7 +221,9 @@ class ToBinaryGenerator(BalancedDataGenerator):
         return xs, ys
 
     def get_data(self):
-        return self.data
+        data = self.data[:, :, :, np.newaxis]
+        data = data.astype(np.float32) / 255.
+        return data
 
     def get_labels(self):
         return self.all_labels
@@ -253,6 +255,16 @@ class SimpleDataGenerator(BaseDataGenerator):
         :type flatten:
         """
         self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
+
+        # Convert images to float and scale to 0..1
+        self.data = self.data.astype(np.float32) / 255.
+
+        if flatten:
+            shape = self.data.shape
+            self.data = self.data.reshape(-1, shape[1] * shape[2])
+        else:
+            self.data = self.data[:, :, :, np.newaxis]
+
         self.labels = np.hstack(tuple([dataset[1] for dataset in datasets]))
 
         self.shuffle = shuffle
@@ -294,18 +306,6 @@ class SimpleDataGenerator(BaseDataGenerator):
         # Generate data
         x, y = self._data_generation(indices)
 
-        # Convert images to float
-        x = x.astype(np.float32)
-
-        # Scale x to 0..1
-        x /= 255.
-
-        if self.flatten:
-            shape = x.shape
-            x = x.reshape(-1, shape[1] * shape[2])
-        else:
-            x = x[:, :, :, np.newaxis]
-
         return x, y
 
     def on_epoch_end(self):
@@ -322,7 +322,7 @@ class SimpleDataGenerator(BaseDataGenerator):
         x = self.data[indices]
         y = self.labels[indices]
 
-        return x, keras.utils.to_categorical(y, num_classes=self.num_classes)
+        return x, y
 
     def get_data(self):
         return self.data
