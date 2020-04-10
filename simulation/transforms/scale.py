@@ -60,6 +60,14 @@ class RescaleIntermediateTransforms(Rescale):
         self.intermediate_transforms = intermediate_transforms
 
     def add_transforms(self, *transforms: ImageTransform):
+        """
+        Add a sequence of intermediate transforms.
+
+        :param transforms: Sequence of transforms to be added.
+        :type transforms: Iterable[ImageTransform]
+        :return: None
+        :rtype: None
+        """
         self.intermediate_transforms.extend(transforms)
 
     def apply(self, img: np.ndarray) -> np.ndarray:

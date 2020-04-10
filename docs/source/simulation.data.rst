@@ -1,9 +1,6 @@
 simulation.data package
 ========================
 
-Submodules
-----------
-
 simulation.data.character\_renderer module
 -------------------------------------------
 
@@ -32,15 +29,6 @@ simulation.data.fonts module
 -----------------------------
 
 .. automodule:: simulation.data.fonts
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: simulation.data
    :members:
    :undoc-members:
    :show-inheritance:

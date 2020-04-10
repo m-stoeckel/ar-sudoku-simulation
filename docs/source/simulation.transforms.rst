@@ -1,9 +1,6 @@
 simulation.transforms package
 =============================
 
-Submodules
-----------
-
 simulation.transforms.base module
 ---------------------------------
 
@@ -40,15 +37,6 @@ simulation.transforms.scale module
 ----------------------------------
 
 .. automodule:: simulation.transforms.scale
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: simulation.transforms
    :members:
    :undoc-members:
    :show-inheritance:

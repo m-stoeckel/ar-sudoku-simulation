@@ -8,9 +8,6 @@ Subpackages
 
    simulation.render.layers
 
-Submodules
-----------
-
 simulation.render.digital\_composition module
 ---------------------------------------------
 
@@ -23,15 +20,6 @@ simulation.render.renderer module
 ---------------------------------
 
 .. automodule:: simulation.render.renderer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: simulation.render
    :members:
    :undoc-members:
    :show-inheritance:

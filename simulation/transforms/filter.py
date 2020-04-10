@@ -7,10 +7,12 @@ from simulation.transforms.base import ImageTransform
 
 
 class Filter(ImageTransform):
+    """
+    Base class for all filtering operations.
+    """
+
     def __init__(self, iterations):
         """
-        Base class for all filtering operations.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """
@@ -36,10 +38,12 @@ class Filter(ImageTransform):
 
 
 class BoxBlur(Filter):
+    """
+    Applies box blur to input images.
+    """
+
     def __init__(self, ksize=3, iterations=1):
         """
-        Applies box blur.
-
         :param ksize: The kernel size.
         :type ksize: int
         :param iterations: The number of iterations.
@@ -55,10 +59,12 @@ class BoxBlur(Filter):
 
 
 class GaussianBlur(Filter):
+    """
+    Applies Gaussian blur to input images.
+    """
+
     def __init__(self, ksize: Union[int, tuple] = 3, sigma=0, iterations=1):
         """
-        Applies Gaussian blur.
-
         :param ksize: The kernel size, must be odd.
         :type ksize: Union[int, tuple]
         :param sigma: The standard deviation of the Gaussian in both x and y direction.
@@ -77,10 +83,12 @@ class GaussianBlur(Filter):
 
 
 class Dilate(Filter):
+    """
+    Dilate the image using a gaussian kernel as structural element.
+    """
+
     def __init__(self, shape=cv2.MORPH_ELLIPSE, size=(3, 3), iterations=1):
         """
-        Dilate the image using a gaussian kernel as structural element.
-
         :param shape: The OpenCV dilation morphing shape to use.
         :type shape: int
         :param size: The size of the structural element kernel.
@@ -97,10 +105,12 @@ class Dilate(Filter):
 
 
 class DilateSoft(Filter):
+    """
+    Dilate the images using a Gaussian kernel as structural element.
+    """
+
     def __init__(self, size=(3, 3), iterations=1):
         """
-        Dilate the image using a Gaussian kernel as structural element.
-
         :param size: Size of the Gaussian.
         :type size: tuple[int, int]
         :param iterations: The number of iterations.
@@ -115,10 +125,12 @@ class DilateSoft(Filter):
 
 
 class SharpenFilter(Filter):
+    """
+    Applies a 3x3 sharpening filter to input images.
+    """
+
     def __init__(self, iterations=1):
         """
-        Applies a 3x3 sharpening filter.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """
@@ -129,10 +141,12 @@ class SharpenFilter(Filter):
 
 
 class ReliefFilter(Filter):
+    """
+    Applies a 3x3 relief filter.
+    """
+
     def __init__(self, iterations=1):
         """
-        Applies a 3x3 relief filter.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """
@@ -143,10 +157,12 @@ class ReliefFilter(Filter):
 
 
 class EdgeFilter(Filter):
+    """
+    Applies a 3x3 edge detection filter.
+    """
+
     def __init__(self, iterations=1):
         """
-        Applies a 3x3 edge detection filter.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """
@@ -157,10 +173,12 @@ class EdgeFilter(Filter):
 
 
 class UnsharpMaskingFilter3x3(Filter):
+    """
+    Applies a 3x3 unsharp masking filter.
+    """
+
     def __init__(self, iterations=1):
         """
-        Applies a 3x3 unsharp masking filter.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """
@@ -171,10 +189,12 @@ class UnsharpMaskingFilter3x3(Filter):
 
 
 class UnsharpMaskingFilter5x5(Filter):
+    """
+    Applies a 5x5 unsharp masking filter.
+    """
+
     def __init__(self, iterations=1):
         """
-        Applies a 5x5 unsharp masking filter.
-
         :param iterations: The number of iterations.
         :type iterations: int
         """

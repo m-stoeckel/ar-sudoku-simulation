@@ -13,10 +13,6 @@ from tensorflow.keras.models import load_model, save_model
 from generate_datasets import load_datasets, get_labels, plot_9x9_grid, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-tf.get_logger().setLevel('ERROR')
-
 
 def train_cnn(path="model/", to_simple_digit=False):
     """
@@ -284,6 +280,10 @@ def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"
 
 
 if __name__ == '__main__':
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    tf.get_logger().setLevel('ERROR')
+
     train_cnn("model_simple_finetuning/", True)
     train_cnn("model_full_finetuning/", False)
 

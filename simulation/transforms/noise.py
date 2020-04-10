@@ -1,4 +1,5 @@
-from typing import Union
+from abc import abstractmethod, ABCMeta
+from typing import Union, Tuple
 
 import cv2
 import numpy as np
@@ -7,14 +8,30 @@ from simulation import Color
 from simulation.transforms.base import ImageTransform
 
 
-class UniformNoise(ImageTransform):
+class SimpleNoise(ImageTransform, metaclass=ABCMeta):
+    @abstractmethod
+    def noise(self, shape: tuple):
+        """
+        Returns the noise as an numpy array of the given shape.
+
+        :param shape: The shape of the noise.
+        :type shape: tuple
+        :return: A numpy array with noise values.
+        :rtype: numpy.ndarray
+        """
+        pass
+
+
+class UniformNoise(SimpleNoise):
+    """
+    Adds uniform noise (additive) to input images.
+
+    The noise is drawn from an float uniform distribution. The image is cast to float and clipped to uint8 after the
+    noise was added.
+    """
+
     def __init__(self, low=-16, high=16):
         """
-        Adds uniform noise (additive).
-
-        The noise is drawn from an float uniform distribution. The image is cast to float and clipped to uint8 after the
-        noise was added.
-
         :param low: Lower bound of the uniform distribution.
         :type low: float
         :param high: Upper bound of the uniform distribution.
@@ -24,8 +41,8 @@ class UniformNoise(ImageTransform):
         self.low = low
         self.high = high
 
-    def noise(self, size):
-        return np.random.uniform(self.low, self.high, size)
+    def noise(self, shape: tuple):
+        return np.random.uniform(self.low, self.high, shape)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         noise = self.noise(img.shape)
@@ -34,14 +51,16 @@ class UniformNoise(ImageTransform):
         return img
 
 
-class GaussianNoise(ImageTransform):
+class GaussianNoise(SimpleNoise):
+    """
+    Adds Gaussian noise (additive) to input images.
+
+    Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
+    was added.
+    """
+
     def __init__(self, mu=0.0, sigma=4.0):
         """
-        Adds Gaussian noise (additive).
-
-        Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
-        was added.
-
         :param mu: The mean of the Gaussian.
         :type mu: float
         :param sigma: The standard deviation of the Gaussian.
@@ -51,8 +70,8 @@ class GaussianNoise(ImageTransform):
         self.mu = mu
         self.sigma = sigma
 
-    def noise(self, size):
-        return np.random.normal(self.mu, self.sigma, size)
+    def noise(self, shape: tuple):
+        return np.random.normal(self.mu, self.sigma, shape)
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         noise = self.noise(img.shape)
@@ -62,13 +81,15 @@ class GaussianNoise(ImageTransform):
 
 
 class SpeckleNoise(GaussianNoise):
+    """
+    Adds Gaussian noise (multiplicative) to input images.
+
+    Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
+    was added.
+    """
+
     def __init__(self, mu=0., sigma=4.0):
         """
-        Adds Gaussian noise (multiplicative).
-
-        Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
-        was added.
-
         :param mu: The mean of the Gaussian.
         :type mu: float
         :param sigma: The standard deviation of the Gaussian.
@@ -88,25 +109,26 @@ class SpeckleNoise(GaussianNoise):
 
 class PoissonNoise(ImageTransform):
     """
-    Adds data dependent poisson noise.
+    Adds data dependent poisson noise to input images.
 
     :source: https://stackoverflow.com/a/30609854
     """
 
     def apply(self, img: np.ndarray) -> np.ndarray:
         img = img.astype(np.float) / 255.
-        vals = len(np.unique(img))
-        vals = 2 ** np.ceil(np.log2(vals))
-        noisy = np.random.poisson(img * vals) / float(vals) * 255
+        noise = 2 ** np.ceil(np.log2(len(np.unique(img))))
+        noisy = np.random.poisson(img * noise) / float(noise) * 255
         noisy = np.clip(noisy, 0, 255)
         return noisy.astype(np.uint8)
 
 
 class SaltAndPepperNoise(ImageTransform):
+    """
+    Sets random single pixels to black or white white.
+    """
+
     def __init__(self, amount: Union[int, float] = 0.01, ratio=0.5):
         """
-        Sets random single pixels to black or white white.
-
         :param amount: Salt & pepper amount.
         :type amount: float
         :param ratio: Salt vs. pepper ratio.
@@ -143,10 +165,13 @@ class SaltAndPepperNoise(ImageTransform):
 
 
 class GrainNoise(SaltAndPepperNoise):
+    """
+    A variant of `SaltAndPepperNoise`__ which adds larger white grains by using reshaping, dilation and JPEG encoding
+    with zero pepper SaltAndPepperNoise.
+    """
+
     def __init__(self, amount=0.0005, iterations=2, shape=(102, 102)):
         """
-        Addes larger white grains.
-
         :param amount: Salt & pepper amount.
         :type amount: float
         """
@@ -167,14 +192,16 @@ class GrainNoise(SaltAndPepperNoise):
 
 
 class EmbedInRectangle(ImageTransform):
+    """
+    Embeds images in a white rectangle.
+
+    The given image is inserted into the center of a new, empty image with the given *inset*.
+    Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
+    original image shape is performed and the new image is returned.
+    """
+
     def __init__(self, inset=0.1, thickness=1):
         """
-        Embeds images in a white rectangle.
-
-        The given image is inserted into the center of a new, empty image with the given *inset*.
-        Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
-        original image size is performed and the new image is returned.
-
         :param inset: The distance to inset the processed image by, in percent.
         :type inset: float
         """
@@ -218,7 +245,17 @@ class EmbedInRectangle(ImageTransform):
             return grid_image
 
     @staticmethod
-    def random_crop(grid_img, shape) -> np.ndarray:
+    def random_crop(grid_img: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+        """
+        Randomly crops the input image to the given shape.
+
+        :param grid_img: Input image to be cropped.
+        :type grid_img: numpy.ndarray
+        :param shape: The new shape.
+        :type shape: Tuple[int, int]
+        :return: The cropped image.
+        :rtype: numpy.ndarray
+        """
         offset = np.array(grid_img.shape) - np.array(shape)
         offset_x = np.random.randint(0, offset[0])
         offset_y = np.random.randint(0, offset[1])
@@ -226,14 +263,16 @@ class EmbedInRectangle(ImageTransform):
 
 
 class EmbedInGrid(EmbedInRectangle):
+    """
+    Embeds images in a white rectangle.
+
+    The given image is inserted into the center of a new, empty image with the given *inset*.
+    Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
+    original image shape is performed and the new image is returned.
+    """
+
     def __init__(self, inset=0.2, thickness=1):
         """
-        Embeds images in a white rectangle.
-
-        The given image is inserted into the center of a new, empty image with the given *inset*.
-        Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
-        original image size is performed and the new image is returned.
-
         :param inset: The distance to inset the processed image by, in percent.
         :type inset: float
         """
@@ -280,10 +319,12 @@ class EmbedInGrid(EmbedInRectangle):
 
 
 class JPEGEncode(ImageTransform):
+    """
+    Encode and subsequently decode the input image using the JPEG algorithm with the supplied *quality*.
+    """
+
     def __init__(self, quality=80):
         """
-        Encode and subsequently decode the input image using the JPEG algorithm with the supplied *quality*.
-
         :param quality: The quality parameter for the JPEG algorithm.
         :type quality: int.
         """

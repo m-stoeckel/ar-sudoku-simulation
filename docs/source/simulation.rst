@@ -12,9 +12,6 @@ Subpackages
    simulation.tests
    simulation.transforms
 
-Submodules
-----------
-
 simulation.colors module
 ------------------------
 
@@ -23,11 +20,3 @@ simulation.colors module
    :undoc-members:
    :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: simulation
-   :members:
-   :undoc-members:
-   :show-inheritance:

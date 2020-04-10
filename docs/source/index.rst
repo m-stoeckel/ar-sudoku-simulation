@@ -10,7 +10,8 @@ Welcome to ARSudoku - Simulation's documentation!
    :maxdepth: 5
    :caption: Contents:
 
-   modules
+   simulation
+   training
 
 
 Indices and tables

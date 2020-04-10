@@ -7,13 +7,14 @@ from simulation.transforms.base import ImageTransform
 
 
 class RandomPerspectiveTransform(ImageTransform):
+    """
+    Applies a homographic perspective transform to images.
+    The transforms is mapped from its original space to a narrowed space.
+    """
     flags = cv2.INTER_LINEAR
 
     def __init__(self, max_shift=0.25, background_color: int = 0):
         """
-        Applies a homographic perspective transform to images.
-        The transforms is mapped from its original space to a narrowed space.
-
         :param max_shift: The maximum amount of shift on either axis.
         :type max_shift: float
         :param background_color: The background color to fill in. If None, cv2.BORDER_REPLICATE will be used.
@@ -51,10 +52,26 @@ class RandomPerspectiveTransform(ImageTransform):
         return cv2.getPerspectiveTransform(pa, pb)
 
     def get_x_displacement(self, x_dim):
+        """
+        Get the displacement along the x-axis.
+
+        :param x_dim: The shape of input image along the x-axis.
+        :type x_dim: int
+        :return: A 4-dimensional array.
+        :rtype: numpy.ndarray
+        """
         return np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
 
-    def get_y_displacement(self, x_dim):
-        return np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
+    def get_y_displacement(self, y_dim):
+        """
+        Get the displacement along the y-axis.
+
+        :param y_dim: The shape of input image along the y-axis.
+        :type y_dim: int
+        :return: A 4-dimensional array.
+        :rtype: numpy.ndarray
+        """
+        return np.random.randint(0, np.floor(y_dim * self.max_shift) + 1, 4)
 
 
 class RandomPerspectiveTransformBackwards(RandomPerspectiveTransform):
@@ -72,7 +89,13 @@ class RandomPerspectiveTransformX(RandomPerspectiveTransform):
     (only left or right tilt).
     """
 
-    def get_y_displacement(self, x_dim):
+    def get_y_displacement(self, _):
+        """
+        Returns a 4-dimensional 0-array.
+
+        :return: A 4-dimensional 0-array.
+        :rtype: numpy.ndarray
+        """
         return np.zeros(4)
 
 
@@ -82,16 +105,24 @@ class RandomPerspectiveTransformY(RandomPerspectiveTransform):
     (only forward or backward tilt).
     """
 
-    def get_x_displacement(self, x_dim):
+    def get_x_displacement(self, _):
+        """
+        Returns a 4-dimensional 0-array.
+
+        :return: A 4-dimensional 0-array.
+        :rtype: numpy.ndarray
+        """
         return np.zeros(4)
 
 
 class LensDistortion(ImageTransform):
+    """
+    Applies camera lens distortion to input images.
+    """
+
     def __init__(self, focal_lengths: Tuple[float, float] = None, dist_coeffs: Iterable[float] = None,
                  principal_point: Tuple[int, int] = None):
         """
-        Applies lens distortion.
-
         :param focal_lengths: The focal lengths of the simulated lens. Default: [500, 500].
         :type focal_lengths: Tuple[float, float]
         :param dist_coeffs: The distance coefficients of the simulated lens. Default: [0,0,0,0].

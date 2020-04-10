@@ -1,9 +1,6 @@
 simulation.tests package
 ========================
 
-Submodules
-----------
-
 simulation.tests.test\_character\_provider module
 -------------------------------------------------
 
@@ -32,15 +29,6 @@ simulation.tests.test\_paper\_renderer module
 ---------------------------------------------
 
 .. automodule:: simulation.tests.test_paper_renderer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: simulation.tests
    :members:
    :undoc-members:
    :show-inheritance:
