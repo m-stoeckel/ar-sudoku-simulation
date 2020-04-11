@@ -1,14 +1,22 @@
 import warnings
-from typing import Tuple
+from abc import abstractmethod, ABCMeta
+from typing import Tuple, Iterable, Union
 
 import numpy as np
 import tensorflow.keras as keras
+from deprecated.sphinx import deprecated
 
 from simulation.data.dataset import CharacterDataset
 
 
-@DeprecationWarning
+@deprecated
 class DigitDataGenerator(keras.utils.Sequence):
+    """
+    Generator for a single dataset.
+
+    .. deprecated:: 1.0.0
+    Use :py:class:`BaseDataGenerator` instead.
+    """
 
     def __init__(
             self,
@@ -31,7 +39,7 @@ class DigitDataGenerator(keras.utils.Sequence):
 
     def __getitem__(self, index):
         """Generate one batch of data"""
-        # Generate indexes of the batch
+        # Generate indices of the batch
         indices = self.machine_indices[index * self.batch_size:(index + 1) * self.batch_size]
 
         # Generate data
@@ -41,7 +49,7 @@ class DigitDataGenerator(keras.utils.Sequence):
         return x[:, :, :, np.newaxis], y
 
     def on_epoch_end(self):
-        """Updates indexes after each epoch"""
+        """Updates indices after each epoch"""
         self.machine_indices = np.arange(len(self.dataset))
         if self.shuffle:
             np.random.shuffle(self.machine_indices)
@@ -54,15 +62,36 @@ class DigitDataGenerator(keras.utils.Sequence):
         return x, keras.utils.to_categorical(y, num_classes=9)
 
 
-class BaseDataGenerator(keras.utils.Sequence):
+class BaseDataGenerator(keras.utils.Sequence, metaclass=ABCMeta):
+    @abstractmethod
     def get_data(self):
+        """
+        Get all data from this generator as a single array. The array contains normalized floats.
+
+        :return: All data of this generator as a float array.
+        :rtype: numpy.ndarray
+        """
         pass
 
+    @abstractmethod
     def get_labels(self):
+        """
+        Get all labels of this generator in a single array.
+
+        :return: All labels of this generator as an integer array.
+        :rtype: numpy.ndarray
+        """
         pass
 
 
 class BalancedDataGenerator(BaseDataGenerator):
+    """
+    This generator balances each of its input datasets. There are two strategies for balancing:
+
+    * truncate: trims all datasets to the length of the shortest dataset for each epoch,
+    * repeat: all datasets shorter than the longest dataset will be repeated during each epoch.
+    """
+
     def __init__(
             self,
             *datasets: Tuple[np.ndarray, np.ndarray],
@@ -73,17 +102,19 @@ class BalancedDataGenerator(BaseDataGenerator):
             num_classes=20
     ):
         """
-        TODO: comment
-        :param datasets:
-        :type datasets:
-        :param batch_size:
-        :type batch_size:
-        :param shuffle:
-        :type shuffle:
-        :param flatten:
-        :type flatten:
-        :param truncate:
-        :type truncate:
+        :param datasets: A sequence of tuples, one for each dataset containing (data, labels).
+        :type datasets: *Tuple[np.ndarray, np.ndarray]
+        :param batch_size: The batch size. Should be divisible by the number of datasets.
+        :type batch_size: int
+        :param shuffle: If True, shuffle the datasets at the end of each epoch. Default: True.
+        :type shuffle: bool
+        :param flatten: If True, flatten the datasets. Default: False.
+        :type flatten: bool
+        :param truncate: If True, the datasets will be truncated to the length of the shortest dataset.
+        Else, they will be repeated. Default: True.
+        :type truncate: bool
+        :param num_classes: The number of classes in the datasets. Default: 20. If None, will be inferred from the data.
+        :type num_classes: int
         """
         self.datasets = [dataset[0] for dataset in datasets]
         self.labels = [dataset[1] for dataset in datasets]
@@ -99,7 +130,10 @@ class BalancedDataGenerator(BaseDataGenerator):
         self.mini_batch_size = int(batch_size / self.num_datasets)
         self.last_mini_batch_size = batch_size - (self.num_datasets - 1) * self.mini_batch_size
 
-        self.num_classes = num_classes
+        if num_classes is not None:
+            self.num_classes = num_classes
+        else:
+            self.num_classes = len(np.unique(self.get_labels()))
 
         if not np.alltrue(self.lengths == self.lengths[0]):
             s_data_align = "truncating larger" if self.truncate else "repeating smaller"
@@ -108,18 +142,27 @@ class BalancedDataGenerator(BaseDataGenerator):
         self.on_epoch_end()
 
     @property
-    def num_datasets(self):
+    def num_datasets(self) -> int:
+        """
+        The number of datasets.
+        """
         return len(self.lengths)
 
     @property
-    def max_len(self):
+    def max_len(self) -> int:
+        """
+        The maximum length of all datasets.
+        """
         return max(self.lengths)
 
     @property
-    def min_len(self):
+    def min_len(self) -> int:
+        """
+        The minimum length of all datasets.
+        """
         return min(self.lengths)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Denotes the number of batches per epoch"""
         if self.truncate:
             return int(np.ceil(self.min_len * self.num_datasets / self.batch_size))
@@ -128,14 +171,15 @@ class BalancedDataGenerator(BaseDataGenerator):
 
     def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Generate one batch of data
+        Generate one batch of data. If the batch size is not divisible by the number of datasets, the **last** dataset
+        will be used to fill the batch.
 
         :param index: The batch number.
         :type index: int
         :return: Returns a tuple of a 4-dimensional ndarray and the class-categorical label ndarray
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
-        # Generate indexes of the batch
+        # Generate indices of the batch
         indices = [dataset_indices[index * self.mini_batch_size:(index + 1) * self.mini_batch_size]
                    for dataset_indices in self.indices]
         indices[-1] = self.indices[-1][index * self.last_mini_batch_size:(index + 1) * self.last_mini_batch_size]
@@ -156,6 +200,17 @@ class BalancedDataGenerator(BaseDataGenerator):
         return x, y
 
     def on_epoch_end(self):
+        """
+        Shuffles the datasets and chooses new indices according to the balancing strategy.
+
+        If :py:attr:`truncate` is True, each dataset will get ordinary indices, some of which will not be selected in
+        batch generation.
+
+        If :py:attr:`truncate` is False however, each dataset will get indices for the length of the
+        *longest* dataset. Too large indices are pruned using the modulo operator.
+
+        :return: None
+        """
         if self.truncate:
             self.indices = [np.arange(len(dataset)) for dataset in self.datasets]
         else:
@@ -176,6 +231,12 @@ class BalancedDataGenerator(BaseDataGenerator):
         data = np.vstack(tuple([dataset[0] for dataset in self.datasets]))
         data = data[:, :, :, np.newaxis]
         data = data.astype(np.float32) / 255.
+        if self.flatten:
+            data = data.squeeze()
+            shape = data.shape
+            data = data.reshape(-1, shape[1] * shape[2])
+        else:
+            data = data[:, :, :, np.newaxis]
         return data
 
     def get_labels(self):
@@ -183,27 +244,38 @@ class BalancedDataGenerator(BaseDataGenerator):
 
 
 class ToBinaryGenerator(BalancedDataGenerator):
+    """
+    A variant of the :py:class:`BalancedDataGenerator` which converts the labels to binary given a class or a sequence
+    of classes to match. Matched classes will be given the label *1*, others *0*. This converted data will then be split
+    into two datasets by class from which a :py:class:`BalancedDataGenerator` is constructed.
+    """
+
     def __init__(
             self,
-            *datasets: (np.ndarray, np.ndarray),
-            class_to_match: int = 0,
+            *datasets: Tuple[np.ndarray, np.ndarray],
+            class_to_match: Union[int, Iterable[int]] = 0,
             **kwargs
     ):
         """
-        TODO: comment
-        :param datasets:
-        :type datasets:
-        :param class_to_match:
-        :type class_to_match:
-        :param kwargs:
-        :type kwargs:
+        :param datasets: A sequence of datasets to convert to binary.
+        :type datasets: *Tuple[numpy.ndarray,numpy.ndarray]]
+        :param class_to_match: The class or classes to match as binary *1* class.
+        :type class_to_match: Union[int, Iterable[int]]
+        :param kwargs: :py:class:`BalancedDataGenerator` arguments.
+        :type kwargs: dict
         """
         self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
         self.all_labels = np.hstack(tuple([dataset[1] for dataset in datasets]))
 
         # Split all datasets into matching and other data
-        matched_indices = self.all_labels == class_to_match
-        other_indices = self.all_labels != class_to_match
+        if isinstance(class_to_match, int):
+            matched_indices = self.all_labels == class_to_match
+        else:
+            iterator = iter(class_to_match)
+            matched_indices = self.all_labels == iterator.__next__()
+            for cls in iterator:
+                matched_indices = np.logical_or(matched_indices, self.all_labels == cls)
+        other_indices = np.logical_not(matched_indices)
 
         # Assign new binary labels
         self.all_labels[matched_indices] = 1
@@ -221,8 +293,13 @@ class ToBinaryGenerator(BalancedDataGenerator):
         return xs, ys
 
     def get_data(self):
-        data = self.data[:, :, :, np.newaxis]
-        data = data.astype(np.float32) / 255.
+        data = self.data.astype(np.float32) / 255.
+        if self.flatten:
+            data = data.squeeze()
+            shape = data.shape
+            data = data.reshape(-1, shape[1] * shape[2])
+        else:
+            data = data[:, :, :, np.newaxis]
         return data
 
     def get_labels(self):
@@ -230,9 +307,17 @@ class ToBinaryGenerator(BalancedDataGenerator):
 
 
 class SimpleDataGenerator(BaseDataGenerator):
+    """
+    A simple data generator which does not do any balancing. All input datasets are concatenated into a single array for
+    both data and labels.
+    
+    They are also immediately converted to normalized float arrays, giving a possible performance increase in 
+    comparison to :py:class:`BalancedDataGenerator`.
+    """
+
     def __init__(
             self,
-            *datasets: (np.ndarray, np.ndarray),
+            *datasets: Tuple[np.ndarray, np.ndarray],
             batch_size=32,
             shuffle=True,
             flatten=False,
@@ -240,19 +325,20 @@ class SimpleDataGenerator(BaseDataGenerator):
             no_zero=False
     ):
         """
-        TODO: Comment
-        :param machine_digits:
-        :type machine_digits:
-        :param handwritten_digits:
-        :type handwritten_digits:
-        :param out_dataset:
-        :type out_dataset:
-        :param batch_size:
-        :type batch_size:
-        :param shuffle:
-        :type shuffle:
-        :param flatten:
-        :type flatten:
+        :param datasets: The input datasets as a sequence of (data, label) tuples.
+        :type datasets: *Tuple[numpy.ndarray, numpy.ndarray]
+        :param batch_size: The batch size.
+        :type batch_size: int
+        :param shuffle: If True, shuffle the datasets at the end of each epoch. Default: True.
+        :type shuffle: bool
+        :param flatten: If True, flatten the datasets. Default: False.
+        :type flatten: bool
+        :param to_simple_digit: If True, convert the dataset into a simple digit dataset, mapping all handwrittin digits
+        to the class of machine written digits. Default: False.
+        :type to_simple_digit: bool
+        :param no_zero: If True and :py:param:`to_simple_digit` is True too, remove all 0-class entries from the
+        datasets. Default: False.
+        :type no_zero: bool
         """
         self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
 
@@ -293,7 +379,7 @@ class SimpleDataGenerator(BaseDataGenerator):
 
     def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Generate one batch of data
+        Generate one batch of data.
 
         :param index: The batch number.
         :type index: int

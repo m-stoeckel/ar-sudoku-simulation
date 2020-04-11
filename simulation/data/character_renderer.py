@@ -15,12 +15,11 @@ class CharacterRenderer:
     """
     A simple class to render TrueType fonts.
     """
+    #:
     char_list = list(u"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-!?(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
         """
-        Constructor for the CharacterRenderer
-
         :param render_resolution: The width and height of the output images. Default: 128.
         :type render_resolution: Union[int, Tuple[int, int]]
         """
@@ -62,13 +61,19 @@ class CharacterRenderer:
         :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
         :type mode: str
         :return: None
-        :rtype: None
         """
         character_dir = base_dir / "datasets/characters/"
         character_dir.mkdir(exist_ok=True)
         font_list = list(Font)
 
         def _prerender_font(font: Font):
+            """
+            Helper function for pre-rendering fonts in parallel.
+
+            :param font: The font to pre-render.
+            :type font: Font
+            :return: None
+            """
             # Choose fontsize from resolution
             # Note: The divisor should be 1.3 for unit correctness,
             # but 1.2 works better for the given task
@@ -85,8 +90,19 @@ class CharacterRenderer:
 
 
 class SingleFontCharacterRenderer(CharacterRenderer):
+    """
+    A CharacterRenderer that renders characters in a single font and saves them in a list. By default all characters in
+    :py:attr:`char_list` are rendered upon construction. Other characters are rendered in a just-in-time manor, but saved for
+    later.
+    """
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128, font=Font.FREE_MONO):
+        """
+        :param render_resolution: The width and height of the output images. Default: 128.
+        :type render_resolution: Union[int, Tuple[int, int]]
+        :param font: The font
+        :type font: :class:`<simulation.data.fonts.Font>`
+        """
         super().__init__(render_resolution)
         self.characters = {}
         self.lookup = []
@@ -119,7 +135,17 @@ class SingleFontCharacterRenderer(CharacterRenderer):
                 return cv2.resize(digit, (resolution[0], resolution[1], 4), interpolation=cv2.INTER_CUBIC)
 
 
-def get_resolution(render_resolution):
+def get_resolution(render_resolution: Union[int, Tuple[int, int]]):
+    """
+    Helper function which returns a tuple of two identical values.
+    If the input is an integer, returns a new tuple.
+    If the input is a tuple, the equality of both first elements is asserted and the tuple returned unchanged.
+
+    :param render_resolution: The resolution.
+    :type render_resolution: Union[int, Tuple[int, int]]
+    :return: A tuple of two ints.
+    :rtype: Tuple[int, int]
+    """
     if isinstance(render_resolution, int):
         return render_resolution, render_resolution
     else:

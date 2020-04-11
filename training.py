@@ -26,7 +26,6 @@ def train_cnn(path="model/", to_simple_digit=False):
     :param to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition.
     :type to_simple_digit: bool
     :return: None
-    :rtype: None
     """
     os.makedirs(path, exist_ok=True)
 
@@ -144,7 +143,6 @@ def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator
     :param test_generator: The generator for test files.
     :type test_generator: BaseDataGenerator
     :return: None
-    :rtype: None
     """
     print("Converting to TFLite model")
     converter: tf.lite.TFLiteConverter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -248,7 +246,6 @@ def evaluate_and_plot(model: Model, test_generator: BaseDataGenerator, binary=Fa
     :param binary: If True, the given model is a binary recognition model.
     :type binary: bool
     :return: None
-    :rtype: None
     """
     x, y_true, y_pred = evaluate(model, test_generator, binary)
     y = get_labels(y_true, y_pred)

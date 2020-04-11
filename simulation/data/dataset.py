@@ -3,6 +3,7 @@ import os
 import sys
 import tarfile
 import zipfile
+from abc import abstractmethod, ABCMeta
 from pathlib import Path
 from typing import Iterable, Dict, List, Union, Tuple
 
@@ -27,6 +28,14 @@ CLASS_OUT = 10
 
 
 def strip_file_ext(path: str):
+    """
+    Helper function which strips the file extension of a ZIP for TAR file's path.
+
+    :param path: The file path.
+    :type path: str
+    :return: The stripped file path.
+    :rtype: str
+    """
     extension = None
     for ext in [".zip", ".tar", ".tar.gz"]:
         if path.endswith(ext):
@@ -38,17 +47,46 @@ def strip_file_ext(path: str):
 
 
 def char_is_valid_number(char: Union[int, str]):
+    """
+    Checks if a character is among the first 9 digits, excluding 0.
+
+    :param char: The char to check. Either as string or as Unicode code point.
+    :type char: Union[int, str]
+    :return: True if the char is among 1..9, false otherwise.
+    :rtype: bool
+    """
     if isinstance(char, str):
         char = ord(char)
     return char in [ord(c) for c in '123456789']
 
 
-class CharacterDataset:
+class CharacterDataset(metaclass=ABCMeta):
+    """
+    An abstract base class for character datasets. It implements various functions but **except** the
+    :py:meth:`_load()` method, which is implemented in its subclasses:
+
+    .. hlist::
+        :columns: 3
+
+        * :py:class:`MNIST`
+        * :py:class:`FilteredMNIST`
+        * :py:class:`ClassSeparateMNIST`
+        * :py:class:`CuratedCharactersDataset`
+        * :py:class:`ClassSeparateCuratedCharactersDataset`
+        * :py:class:`PrerenderedDigitDataset`
+        * :py:class:`PrerenderedCharactersDataset`
+        * :py:class:`ConcatDataset`
+        * :py:class:`EmptyDataset`
+        * :py:class:`RealDataset`
+        * :py:class:`RealValidationDataset`
+
+
+    """
     digit_offset = 0
 
     def __init__(
             self,
-            resolution,
+            resolution: int,
             shuffle=True,
             fast_resize=True
     ):
@@ -69,6 +107,7 @@ class CharacterDataset:
 
         self._load()
 
+    @abstractmethod
     def _load(self):
         pass
 
@@ -103,7 +142,6 @@ class CharacterDataset:
         :param clear: If True, clear the list of transforms at the end of
         :type clear: bool
         :return: None
-        :rtype: None
         """
         if not self.transforms:
             return
@@ -160,7 +198,6 @@ class CharacterDataset:
         :param resolution: The new transforms width/height.
         :type resolution: int
         :return: None
-        :rtype: None
         """
         if resolution == self.resolution:
             return
@@ -201,7 +238,6 @@ class CharacterDataset:
         :param mode: The OpenCV color space conversion code.
         :type mode: int
         :return: None
-        :rtype: None
         """
         self.train_x = self._get_with_colorspace(self.train_x, mode)
         self.test_x = self._get_with_colorspace(self.test_x, mode)

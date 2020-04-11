@@ -66,7 +66,6 @@ class RescaleIntermediateTransforms(Rescale):
         :param transforms: Sequence of transforms to be added.
         :type transforms: Iterable[ImageTransform]
         :return: None
-        :rtype: None
         """
         self.intermediate_transforms.extend(transforms)
 

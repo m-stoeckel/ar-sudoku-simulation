@@ -18,5 +18,6 @@ simulation.colors module
 .. automodule:: simulation.colors
    :members:
    :undoc-members:
+   :private-members:
    :show-inheritance:
 

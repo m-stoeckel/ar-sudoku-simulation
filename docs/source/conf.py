@@ -21,6 +21,11 @@ project = 'ARSudoku - Simulation'
 copyright = '2020, Manuel Stoeckel'
 author = 'Manuel Stoeckel'
 
+# The short X.Y version
+version = '1.0.0'
+# The full version, including alpha/beta/rc tags
+release = '1'
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -28,7 +33,9 @@ author = 'Manuel Stoeckel'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc'
+    'sphinx.ext.autodoc',
+    'sphinx.ext.todo',
+    'sphinx.ext.githubpages',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -45,9 +52,16 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'classic'
+# html_theme = 'pyramid'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+#---sphinx-themes-----
+import sphinx_glpi_theme
+
+html_theme = "glpi"
+
+html_theme_path = sphinx_glpi_theme.get_html_themes_path()
