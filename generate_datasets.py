@@ -38,7 +38,7 @@ def generate_base_datasets():
         prerendered_digit_dataset.resize(28)
 
         # Save base datasets for later
-        concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
+        concat_machine = ConcatDataset(digit_dataset, prerendered_digit_dataset)
         save_datsets([(concat_machine, "base_machine_dataset")])
 
     ######################
@@ -54,7 +54,7 @@ def generate_base_datasets():
         mnist = ClassSeparateMNIST(data_home="datasets/")
 
         # Save base datasets for later
-        concat_hand = ConcatDataset([mnist, curated_digits])
+        concat_hand = ConcatDataset(mnist, curated_digits)
         save_datsets([(concat_hand, "base_hand_dataset")])
 
     ##############
@@ -81,7 +81,7 @@ def generate_base_datasets():
         # Concatenate datasets
         # concat_out = ConcatDataset([curated_out, prerendered_nondigit_dataset, empty_dataset])
         # concat_out = ConcatDataset([curated_out, empty_dataset])
-        concat_out = ConcatDataset([empty_dataset])
+        concat_out = ConcatDataset(empty_dataset)
 
         # Save base datasets for later
         save_datsets([(concat_out, "base_out_dataset")])
@@ -208,11 +208,11 @@ def save_datsets(datasets: Iterable[Tuple[CharacterDataset, str]]):
 def create_data_overview(samples=20):
     concat_machine, concat_hand, concat_out, train, _ = load_datasets(TRANSFORMED_DATASET_NAMES)
 
-    dataset = ConcatDataset([concat_machine, concat_hand, concat_out], delete=False)
+    dataset = ConcatDataset(concat_machine, concat_hand, concat_out, delete=False)
     render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_samples.png")
     render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_samples.png")
 
-    dataset = ConcatDataset([train], delete=False)
+    dataset = ConcatDataset(train, delete=False)
     render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_real.png")
     render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_real.png")
 

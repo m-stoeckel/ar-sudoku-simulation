@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class Font(Enum):
+    """
+    An enumeration of all available fonts.
+    """
     AAARGH = "fonts/aaargh/Aaargh.ttf"
     ABEL_REGULAR = "fonts/abel/Abel-Regular.ttf"
     ABHAYA_LIBRE_BOLD = "fonts/abhaya-libre/AbhayaLibre-Bold.ttf"

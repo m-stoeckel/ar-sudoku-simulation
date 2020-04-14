@@ -15,7 +15,7 @@ class DigitDataGenerator(keras.utils.Sequence):
     Generator for a single dataset.
 
     .. deprecated:: 1.0.0
-    Use :py:class:`BaseDataGenerator` instead.
+       Use :py:class:`BaseDataGenerator` instead.
     """
 
     def __init__(

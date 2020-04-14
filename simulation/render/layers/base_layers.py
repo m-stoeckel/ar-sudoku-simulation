@@ -26,8 +26,7 @@ class DigitalCompositionLayer(Layer):
         """
         Add an element to the printing layer, with same resolution as all other layers.
 
-        :param element: A numpy.ndarray of the same shape as existing elements. If element is grayscale or RGB, it will
-        be converted to RGBA.
+        :param element: A numpy.ndarray of the same shape as existing elements. If element is grayscale or RGB, it will be converted to RGBA.
         :raises: ValueError if the shapes of the elements do not match.
         :return: None
         """

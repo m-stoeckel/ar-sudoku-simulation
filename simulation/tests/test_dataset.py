@@ -49,9 +49,9 @@ class Test(TestCase):
         empty_dataset = EmptyDataset(28, 1000)
 
         # Concatenate datasets
-        concat_machine = ConcatDataset([digit_dataset, prerendered_digit_dataset])
-        concat_hand = ConcatDataset([mnist, curated_digits])
-        concat_out = ConcatDataset([curated_out, prerendered_nondigit_dataset, empty_dataset])
+        concat_machine = ConcatDataset(digit_dataset, prerendered_digit_dataset)
+        concat_hand = ConcatDataset(mnist, curated_digits)
+        concat_out = ConcatDataset(curated_out, prerendered_nondigit_dataset, empty_dataset)
 
         batch_size = 12
         d = BalancedDataGenerator(

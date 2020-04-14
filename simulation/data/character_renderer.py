@@ -1,3 +1,9 @@
+"""
+A module for the rendering of characters using TrueType fonts.
+
+.. codeauthor:: Manuel Stoeckel <manuel.stoeckel@stud.uni-frankfurt.de>
+"""
+
 import os
 from pathlib import Path
 from typing import Union, Tuple
@@ -15,7 +21,8 @@ class CharacterRenderer:
     """
     A simple class to render TrueType fonts.
     """
-    #:
+    #: The list of characters to render by default. Includes all numbers, common english letters and some punctuation
+    #: marks and brackets.
     char_list = list(u"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-!?(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
