@@ -3,13 +3,14 @@ from typing import Tuple, List
 import cv2
 import numpy as np
 
-from simulation.transforms.base import ImageTransform
+from simulation.transforms import ImageTransform
 
 
 class Rescale(ImageTransform):
     """
     Reduce the detail of images by resizing it to a given resolution
     and consecutively scaling it back to its original size again.
+
     """
 
     def __init__(self, size: Tuple[int, int], inter_initial=cv2.INTER_AREA, inter_consecutive=cv2.INTER_LINEAR):
@@ -17,12 +18,13 @@ class Rescale(ImageTransform):
         Reduce the detail of images by resizing it to a given resolution
         and consecutively scaling it back to its original size again.
 
-        :param size: The intermediate size of the transforms.
-        :type size: Tuple[int, int]
-        :param inter_initial: The initial OpenCV interpolation algorithm.
-        :type inter_initial: int
-        :param inter_consecutive: The consecutive rescaling OpenCV interpolation algorithm.
-        :type inter_consecutive: int
+        Args:
+            size(Tuple[int, int]): The intermediate size of the transforms.
+            inter_initial(inter_initial: int, optional): The initial OpenCV interpolation algorithm.
+                (Default value = cv2.INTER_AREA)
+            inter_consecutive(inter_consecutive: int, optional): The consecutive rescaling OpenCV interpolation
+                algorithm. (Default value = cv2.INTER_LINEAR)
+
         """
         self.size = size
         self.inter_initial = inter_initial
@@ -39,22 +41,28 @@ class RescaleIntermediateTransforms(Rescale):
     """
     Reduce the detail of images by resizing it to a given resolution, applying a series of intermediate transforms and
     consecutively scaling it back to its original size again.
+
     """
 
-    def __init__(self, size: Tuple[int, int], intermediate_transforms: List[ImageTransform],
-                 inter_initial=cv2.INTER_AREA, inter_consecutive=cv2.INTER_LINEAR):
+    def __init__(
+            self,
+            size: Tuple[int, int],
+            intermediate_transforms: List[ImageTransform],
+            inter_initial=cv2.INTER_AREA,
+            inter_consecutive=cv2.INTER_LINEAR
+    ):
         """
         Reduce the detail of images by resizing it to a given resolution, applying a series of intermediate transforms
         and consecutively scaling it back to its original size again.
 
-        :param size: The intermediate size of the transforms.
-        :type size: Tuple[int, int]
-        :param intermediate_transforms: A list of transforms to be applied after the initial rescale
-        :type intermediate_transforms: List[ImageTransform]
-        :param inter_initial: The initial OpenCV interpolation algorithm.
-        :type inter_initial: int
-        :param inter_consecutive: The consecutive rescaling OpenCV interpolation algorithm.
-        :type inter_consecutive: int
+        Args:
+            size(Tuple[int, int]): The intermediate size of the transforms.
+            intermediate_transforms(List[ImageTransform]): A list of transforms to be applied after the initial rescale.
+            inter_initial(inter_initial: int, optional): The initial OpenCV interpolation algorithm.
+                (Default value = cv2.INTER_AREA)
+            inter_consecutive(inter_consecutive: int, optional): The consecutive rescaling OpenCV interpolation
+                algorithm. (Default value = cv2.INTER_LINEAR)
+
         """
         super().__init__(size, inter_initial, inter_consecutive)
         self.intermediate_transforms = intermediate_transforms
@@ -63,9 +71,12 @@ class RescaleIntermediateTransforms(Rescale):
         """
         Add a sequence of intermediate transforms.
 
-        :param transforms: Sequence of transforms to be added.
-        :type transforms: Iterable[ImageTransform]
-        :return: None
+        Args:
+            transforms(Iterable[ImageTransform]): Sequence of transforms to be added.
+
+        Returns:
+            None
+
         """
         self.intermediate_transforms.extend(transforms)
 

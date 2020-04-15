@@ -28,25 +28,26 @@ class TestPaperRenderer(TestCase):
         el_3 = np.array([[1, 2, 3, 255], [1, 2, 3, 255], [1, 2, 3, 255], [1, 2, 3, 255]], dtype=np.uint8)
         self.assertRaises(ValueError, printing_layer.add_element, el_3)
 
-    def test_digital_composition(self):
+    def test_composition(self):
         alpha = np.zeros((256, 256, 4), dtype=np.uint8)
         for i in range(256):
             for j in range(256):
                 alpha[i, j, 3] = i
-        red = alpha.transpose((1, 0, 2)).copy().transpose((1, 0, 2))
+        alpha = alpha.transpose((1, 0, 2))
+        red = alpha.copy()
         red[:, :, 0] = 255
-        green = alpha.transpose((1, 0, 2)).copy()
+        green = alpha.copy()
         green[:, :, 1] = 255
-        blue = alpha.transpose((1, 0, 2)).copy()
+        blue = alpha.copy()
         blue[:, :, 2] = 255
-        yellow = alpha.transpose((1, 0, 2)).copy()
-        yellow[:, :, 0] = 255
-        yellow[:, :, 1] = 255
+        box = np.zeros((256, 256, 4), dtype=np.uint8)
+        box[:, 128:, 3] = 127
+        box[64:192, 64:192, :] = 255
 
         for Method in DigitalCompositionMethod.__subclasses__():
             method = Method()
             fig, axes = plt.subplots(1, 3, figsize=(9, 3.25))
-            for ax, color in zip(axes, [green, blue, yellow]):
+            for ax, color in zip(axes, [green, blue, box]):
                 layer = DigitalCompositionLayer((256, 256), composite=method)
                 layer.add_element(red.copy())
                 layer.add_element(color.copy())

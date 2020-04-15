@@ -33,10 +33,12 @@ def strip_file_ext(path: str):
     """
     Helper function which strips the file extension of a ZIP for TAR file's path.
 
-    :param path: The file path.
-    :type path: str
-    :return: The stripped file path.
-    :rtype: str
+    Args:
+        path(str): The file path.
+
+    Returns:
+        str: The stripped file path.
+
     """
     extension = None
     for ext in [".zip", ".tar", ".tar.gz"]:
@@ -52,10 +54,12 @@ def char_is_valid_number(char: Union[int, str]):
     """
     Checks if a character is among the first 9 digits, excluding 0.
 
-    :param char: The char to check. Either as string or as Unicode code point.
-    :type char: Union[int, str]
-    :return: True if the char is among 1..9, false otherwise.
-    :rtype: bool
+    Args:
+        char(Union[int, str]): The char to check. Either as string or as Unicode code point.
+
+    Returns:
+        bool: True if the char is among 1..9, false otherwise.
+
     """
     if isinstance(char, str):
         char = ord(char)
@@ -66,10 +70,10 @@ class CharacterDataset(metaclass=ABCMeta):
     """
     An abstract base class for character datasets. It implements various functions **except** the
     :py:meth:`_load()` method, which is implemented in its subclasses:
-
+    
     .. hlist::
         :columns: 3
-
+    
         * :py:class:`MNIST`
         * :py:class:`FilteredMNIST`
         * :py:class:`ClassSeparateMNIST`
@@ -81,7 +85,6 @@ class CharacterDataset(metaclass=ABCMeta):
         * :py:class:`EmptyDataset`
         * :py:class:`RealDataset`
         * :py:class:`RealValidationDataset`
-
 
     """
     digit_offset = 0
@@ -113,7 +116,10 @@ class CharacterDataset(metaclass=ABCMeta):
     def _load(self):
         """
         Called at the end of the this classes constructor call. Implement this method to load all necessary data.
-        :return: None
+
+        Returns:
+             None
+
         """
         pass
 
@@ -127,10 +133,12 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Get the label for a character from its Unicode code point value.
 
-        :param char: The Unicode code point value of the character
-        :type char: int
-        :return: The class of this character for in this dataset.
-        :rtype: int
+        Args:
+            char(int): The Unicode code point value of the character
+
+        Returns:
+            int: The class of this character for in this dataset.
+
         """
         if char_is_valid_number(char):
             return int(chr(char)) + self.digit_offset
@@ -141,8 +149,13 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Add a transform or a list of sequential transforms to this generator.
 
-        :param transforms: Single ImageTransform or list of sequential ImageTransform
-        :return: None
+        Args:
+            transforms(:py:class:`ImageTransform <simulation.transforms.base.ImageTransform>`): Single ImageTransform or
+                list of sequential ImageTransforms.
+
+        Returns:
+            None
+
         """
         transforms = list(transforms)
         self.transforms.append(transforms)
@@ -151,11 +164,13 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Apply all sequences of transforms added previously.
 
-        :param keep: If True, keep the original images in the dataset
-        :type keep: bool
-        :param clear: If True, clear the list of transforms at the end of
-        :type clear: bool
-        :return: None
+        Args:
+            keep(bool, optional): If True, keep the original images in the dataset (Default value = True)
+            clear(bool, optional): If True, clear the list of transforms at the end of (Default value = True)
+
+        Returns:
+            None
+
         """
         if not self.transforms:
             return
@@ -209,9 +224,12 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Resize all images in the data set to the given resolution.
 
-        :param resolution: The new transforms width/height.
-        :type resolution: int
-        :return: None
+        Args:
+            resolution(int, optional): The new transforms width/height. (Default value = 28)
+
+        Returns:
+            None
+
         """
         if resolution == self.resolution:
             return
@@ -221,29 +239,31 @@ class CharacterDataset(metaclass=ABCMeta):
         self.resolution = resolution
 
     @staticmethod
-    def _get_resized(data, resolution, interpolation) -> np.ndarray:
+    def _get_resized(data: np.ndarray, resolution: int, interpolation: int) -> np.ndarray:
         """
         Helper function to resize all images in :py:data:`data` to the given :py:data:`resolution` with the given
         :py:data:`iterpolation` method.
 
-        :param data: An array of images.
-        :type data: :py:class:`np.ndarray`
-        :param resolution: The desired width/height of the images.
-        :type resolution: int
-        :param interpolation: A OpenCV interpolation method code.
-        :type interpolation: int
-        :return: The resized images as an numpy array.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            data(:py:class:`numpy.ndarray`): An array of images.
+            resolution(int): The desired width/height of the images.
+            interpolation(interpolation: int): A OpenCV interpolation method code.
+
+        Returns:
+            :py:class:`numpy.ndarray`: The resized images as an numpy array.
+
         """
 
-        def _do_resize(img) -> np.ndarray:
+        def _do_resize(img: np.ndarray) -> np.ndarray:
             """
             Helper function for resizing images in parallel.
 
-            :param img: The image to resize.
-            :type img: :py:class:`np.ndarray`
-            :return: The resized image
-            :rtype: :py:class:`np.ndarray`
+            Args:
+            img(:py:class:`numpy.ndarray`): The image to resize.
+
+            Returns:
+            :py:class:`numpy.ndarray`: The resized image
+
             """
             img = cv2.resize(img, (resolution, resolution), interpolation=interpolation)
             return img
@@ -271,24 +291,28 @@ class CharacterDataset(metaclass=ABCMeta):
         Convert all images in the dataset to the specified colorspace.
         If mode is 'cv2.COLOR_GRAY2BGRA', optimized code is used, which also assigns correct alpha values.
 
-        :param mode: The OpenCV color space conversion code.
-        :type mode: int
-        :return: None
+        Args:
+            mode(int, optional): The OpenCV color space conversion code. (Default value = cv2.COLOR_GRAY2BGRA)
+
+        Returns:
+            None
+
         """
         self.train_x = self._get_with_colorspace(self.train_x, mode)
         self.test_x = self._get_with_colorspace(self.test_x, mode)
 
     @staticmethod
-    def _get_with_colorspace(data, mode) -> np.ndarray:
+    def _get_with_colorspace(data: np.ndarray, mode: int) -> np.ndarray:
         """
         Helper function to convert all images in :py:data:`data` to the given colorspace.
 
-        :param data: An array of images.
-        :type data: :py:class:`np.ndarray`
-        :param mode: An OpenCV colorspace code.
-        :type mode: int
-        :return: The images in the new colorspace as an numpy array.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            data(:py:class:`numpy.ndarray`): An array of images.
+            mode(int): An OpenCV colorspace code.
+
+        Returns:
+            :py:class:`numpy.ndarray`: The images in the new colorspace as an numpy array.
+
         """
         if mode == cv2.COLOR_GRAY2BGRA:
             # If mode is grayscale to RGBA, use optimized code instead of ordinary cvtColor
@@ -327,21 +351,25 @@ class CharacterDataset(metaclass=ABCMeta):
     def invert(self):
         """
         Invert all images using OpenCV's *bit-wise not*.
+        
+        Returns:
+             None
 
-        :return: None
         """
         self.train_x = self._get_inverted(self.train_x)
         self.test_x = self._get_inverted(self.test_x)
 
     @staticmethod
-    def _get_inverted(data: np.ndarray):
+    def _get_inverted(data: np.ndarray) -> np.ndarray:
         """
         Helper function to invert all images in :py:data:`data`.
 
-        :param data: An array of images to invert.
-        :type data: :py:class:`np.ndarray`
-        :return: The inverted images.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            data(:py:class:`numpy.ndarray`): An array of images to invert.
+
+        Returns:
+            :py:class:`numpy.ndarray`: The inverted images.
+
         """
         tq = tqdm(desc="Inverting images", total=data.shape[0])
         cv2.bitwise_not(data, data)
@@ -354,15 +382,20 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Induce the alpha for the images in this dataset. The images must be in RGBA format for this to work.
 
-        :param average_color: If True, set alpha value to the average of all color channels for each pixel (default).
-        :type average_color: Optional[Tuple[int]]
-        :param alpha_zero_value: If given, set the alpha value to zero for this value and to 255 for all others.
-        :type alpha_zero_value: Optional[int]
-        :param max_of_channel: If given, set the alpha value to the maximum value of the given color channels.
-        :type max_of_channel: Union[Tuple[int], List[int], None]
-        :param invert: If True, invert the alpha values. Default: True.
-        :type invert: bool
-        :return: None
+        Args:
+            average_color(Optional[Tuple[int]]): If True, set alpha value to the average of all color channels for each pixel (default).
+            alpha_zero_value(Optional[int]): If given, set the alpha value to zero for this value and to 255 for all others.
+            max_of_channel(Union[Tuple[int], List[int], None]): If given, set the alpha value to the maximum value of the given color channels.
+            invert(bool, optional): If True, invert the alpha values. Default: True.
+            average_color: Optional[Tuple[int]]:  (Default value = None)
+            alpha_zero_value: int:  (Default value = None)
+            max_of_channel: Union[Tuple[int]:
+            List[int]:
+            None]:  (Default value = None)
+
+        Returns:
+            None
+
         """
         if all(p is None for p in [average_color, alpha_zero_value, max_of_channel]):
             average_color = (0, 1, 2)
@@ -371,26 +404,30 @@ class CharacterDataset(metaclass=ABCMeta):
 
     @staticmethod
     def _get_with_alpha(
-            data, average_color=None,
+            data: np.ndarray,
+            average_color=None,
             alpha_zero_value: int = None,
             max_of_channel: Tuple[int] = None,
             invert=True
-    ):
+    ) -> np.ndarray:
         """
         Helper function to induce the alpha for all images in :py:data:`data`.
-        
-        :param data: An array of images to induce the alpha values for.
-        :type data: :py:class:`np.ndarray`
-        :param average_color: If True, set alpha value to the average of all color channels for each pixel (default).
-        :type average_color: Optional[Tuple[int]]
-        :param alpha_zero_value: If given, set the alpha value to zero for this value and to 255 for all others.
-        :type alpha_zero_value: Optional[int]
-        :param max_of_channel: If given, set the alpha value to the maximum value of the given color channels.
-        :type max_of_channel: Union[Tuple[int], List[int], None]
-        :param invert: If True, invert the alpha values. Default: True.
-        :type invert: bool
-        :return: The images with new alpha values.
-        :rtype: :py:class:`np.ndarray`
+
+        Args:
+            data(:py:class:`numpy.ndarray`): An array of images to induce the alpha values for.
+            average_color(Optional[Tuple[int]], optional): If True, set alpha value to the average of all color channels
+                for each pixel (default).
+            alpha_zero_value(Optional[int]): If given, set the alpha value to zero for this value and to 255 for all
+                others.
+            max_of_channel(Union[Tuple[int], List[int], None]): If given, set the alpha value to the maximum value of
+                the given color channels.
+            invert(bool, optional): If True, invert the alpha values. Default: True.
+            alpha_zero_value: int:  (Default value = None)
+            max_of_channel: Tuple[int]:  (Default value = None)
+
+        Returns:
+            :py:class:`numpy.ndarray`: The images with new alpha values.
+
         """
         tq = tqdm(desc="Inducing alpha", total=data.shape[0])
         if average_color is not None:
@@ -423,9 +460,13 @@ class CharacterDataset(metaclass=ABCMeta):
         """
         Split the dataset into train and validation splits.
 
-        :param digits: An array of images
-        :param labels: An array of labels
-        :return: None
+        Args:
+            digits(:py:class:`numpy.ndarray`): An array of images
+            labels(:py:class:`numpy.ndarray`): An array of labels
+
+        Returns:
+            None
+
         """
         all_count = digits.shape[0]
         train_count = int(all_count * 0.9)
@@ -439,47 +480,58 @@ class CharacterDataset(metaclass=ABCMeta):
 
     def get_ordered(self, digit: int, index: int) -> np.ndarray:
         """
-        Get a random sample of the given digit.
+        Get a sample of the given character in order.
 
-        :return: 2D numpy array of 28x28 pixels
+        Args:
+            digit(int): The characters class.
+            index(int): The ordered index of the specific character.
+
+        Returns:
+             2D numpy array of 28x28 pixels
+
         """
         return self.train_x[self.train_indices_by_number[digit][index]]
 
     def get_random(self, digit: int) -> np.ndarray:
         """
-        Get a random sample of the given digit.
+        Get a random sample of the given character.
 
-        :return: 2D numpy array of 28x28 pixels
+        Args:
+            digit(int): The characters class.
+
+        Returns:
+             2D numpy array of 28x28 pixels
+
         """
         return self.train_x[np.random.choice(self.train_indices_by_number[digit])]
 
     @property
     def train(self):
-        """
-        Returns the random train split (60.000 samples by default) of the MNIST dataset.
-        """
+        """Returns the random train split of the dataset."""
         return self.train_x, self.train_y
 
     @property
     def test(self):
-        """
-        Returns the random test split (10.000 samples by default) of the MNIST dataset.
-        """
+        """Returns the random test split of the dataset."""
         return self.test_x, self.test_y
 
 
 class MNIST(CharacterDataset):
     """
-    A :py:class:`CharacterDataset` implementation for the MNIST dataset. Downloads the images with sklearn (if
-    necessary) and saves them in a directory under :py:const:`DATASETS_HOME`.
+    A :py:class:`CharacterDataset <simulation.data.dataset.CharacterDataset>` implementation for the MNIST dataset. Downloads the images with sklearn (if
+    necessary) and saves them in a directory under :py:data:`DATASETS_HOME <simulation.data.dataset.DATASETS_HOME>`.
+
     """
 
     def __init__(self, data_home=DATASETS_HOME, shuffle=True):
         """
-        :param data_home: The base directory where the dataset is or will be stored.
-        :type data_home: str
-        :param shuffle: If true, shuffle the dataset on load. Default: True.
-        :type shuffle: bool
+        
+
+        Args:
+            data_home(str, optional): The base directory where the dataset is or will be stored.
+                (Default value = :py:data:`DATASETS_HOME <simulation.data.dataset.DATASETS_HOME>`)
+            shuffle(bool, optional): If true, shuffle the dataset on load. Default: True.
+
         """
         self.data_home = data_home
         super().__init__(28, shuffle)
@@ -508,9 +560,7 @@ class MNIST(CharacterDataset):
 
 
 class FilteredMNIST(MNIST):
-    """
-    A variant of the :py:class:`MNIST` dataset, without any 0-digit images (labels unchanged).
-    """
+    """A variant of the :py:class:`MNIST` dataset, without any 0-digit images (labels unchanged)."""
 
     def __init__(self, data_home=DATASETS_HOME, shuffle=True):
         super().__init__(data_home, shuffle)
@@ -524,20 +574,13 @@ class FilteredMNIST(MNIST):
         self.test_indices_by_number = {i: np.flatnonzero(self.test_y == i) for i in range(1, 10)}
 
     def get_random(self, digit: int) -> np.ndarray:
-        """
-        Get a random sample of the given digit.
-
-        :returns: 2D numpy array of 28x28 pixels
-        """
         if digit == 0:
             raise ValueError("FilteredMNIST does not contain any 0 digits!")
         return self.train_x[np.random.choice(self.train_indices_by_number[digit - 1])]
 
 
 class ClassSeparateMNIST(FilteredMNIST):
-    """
-    A variant of the :py:class:`FilteredMNIST` dataset which assigns the classes 11-19 to digits.
-    """
+    """A variant of the :py:class:`FilteredMNIST` dataset which assigns the classes 11-19 to digits."""
     _digit_offset = 10
 
     def __init__(self, **kwargs):
@@ -557,9 +600,7 @@ class ClassSeparateMNIST(FilteredMNIST):
 
 
 class CuratedCharactersDataset(CharacterDataset):
-    """
-    A :py:class:`CharacterDataset` for the *Curated Handwritten Characters* dataset.
-    """
+    """A :py:class:`CharacterDataset` for the *Curated Handwritten Characters* dataset."""
     _default_digit_archive_path = DATASETS_HOME + "curated.tar.gz"
     _default_digit_parent_path = DATASETS_HOME
     _default_digit_path = DATASETS_HOME + "curated/"
@@ -609,9 +650,7 @@ class CuratedCharactersDataset(CharacterDataset):
         super().__init__(resolution, **kwargs)
 
     def _load(self):
-        """
-        Load the Curated Handwritten Character dataset.
-        """
+        """Load the Curated Handwritten Character dataset."""
         char_count = len(self.file_map)
 
         digits = np.zeros((char_count, self.resolution, self.resolution), dtype=np.uint8)
@@ -635,29 +674,25 @@ class CuratedCharactersDataset(CharacterDataset):
 
 
 class ClassSeparateCuratedCharactersDataset(CuratedCharactersDataset):
-    """
-    A variant of the :py:class:`CuratedCharactersDataset` which assigns the classes 11-19 to digits.
-    """
+    """A variant of the :py:class:`CuratedCharactersDataset` which assigns the classes 11-19 to digits."""
     digit_offset = 10
 
 
 class PrerenderedDigitDataset(CharacterDataset):
-    """
-    A dataset for pre-rendered machine written digits.
-    """
+    """A dataset for pre-rendered machine written digits."""
     default_digit_parent = DATASETS_HOME
     default_digit_path = DATASETS_HOME + "digits/"
 
     def __init__(self, digits_path=DATASETS_HOME + "digits.zip", resolution=128, digit_count=915, **kwargs):
         """
-        :param digits_path: The
-        :type digits_path:
-        :param resolution:
-        :type resolution:
-        :param digit_count:
-        :type digit_count:
-        :param kwargs:
-        :type kwargs:
+        
+
+        Args:
+            digits_path(param resolution:, optional): The (Default value = :py:data:`DATASETS_HOME` + "digits.zip")
+            resolution: type resolution: (Default value = 128)
+            digit_count: type digit_count: (Default value = 915)
+            kwargs: Arbitrary :py:class:`CharacterDataset` keyword arguments.
+
         """
         if not os.path.exists(digits_path):
             raise FileNotFoundError(digits_path)
@@ -696,6 +731,7 @@ class PrerenderedCharactersDataset(CuratedCharactersDataset):
     """
     A dataset for pre-rendered machine written characters, for example the ones rendered using the
     :py:mod:`simulation.render` module.
+
     """
     _default_digit_parent_path = DATASETS_HOME
     _default_digit_path = DATASETS_HOME + "characters/"
@@ -705,16 +741,16 @@ class PrerenderedCharactersDataset(CuratedCharactersDataset):
 
 
 class ConcatDataset(CharacterDataset):
-    """
-    Concatenates multiple datasets by copy into a single one. Old datasets can be removed afterwards.
-    """
+    """Concatenates multiple datasets by copy into a single one. Old datasets can be removed afterwards."""
 
     def __init__(self, *datasets: CharacterDataset, delete=True):
         """
-        :param datasets: A sequence of CharacterDatasets.
-        :type datasets: *CharacterDataset
-        :param delete: If True, invoke `del dataset for dataset in datasets`. Default: True.
-        :type delete: bool
+        
+
+        Args:
+            datasets(CharacterDataset): A sequence of CharacterDatasets.
+            delete(bool, optional): If True, invoke `del dataset for dataset in datasets`. (Default value = True)
+
         """
         assert len(datasets) > 0, 'Datasets should not be an empty iterable'
         train_size, test_size = 0, 0
@@ -752,16 +788,16 @@ class ConcatDataset(CharacterDataset):
 
 
 class EmptyDataset(CharacterDataset):
-    """
-    A dataset of empty (black/zero-valued) images.
-    """
+    """A dataset of empty (black/zero-valued) images."""
 
     def __init__(self, resolution, size=1000):
         """
-        :param resolution: The dataset resolution.
-        :type resolution: int
-        :param size: The size of the dataset. Default: 1000.
-        :type size: int
+        
+
+        Args:
+            resolution(int): The dataset resolution.
+            size(int, optional): The size of the dataset. Default: 1000.
+
         """
         self.size = size
         super().__init__(resolution)
@@ -771,13 +807,7 @@ class EmptyDataset(CharacterDataset):
         labels = np.full(self.size, CLASS_EMPTY, dtype=int)
         self._split(data, labels)
 
-    def _split(self, data, labels):
-        """
-        Split the dataset into train and validation splits.
-
-        :param data: An array of images
-        :param labels: An array of labels
-        """
+    def _split(self, data: np.ndarray, labels: np.ndarray) -> None:
         train_count = int(data.shape[0] * 0.9)
         self.train_x = data[:train_count]
         self.train_y = labels[:train_count]
@@ -786,18 +816,18 @@ class EmptyDataset(CharacterDataset):
 
 
 class RealDataset(CharacterDataset):
-    """
-    A dataset for real training/validation images.
-    """
+    """A dataset for real training/validation images."""
 
     def __init__(self, base_path: Union[str, Path], resolution=28, has_old_scheme=False):
         """
-        :param base_path: The base path of the images.
-        :type base_path: Union[str, Path]
-        :param resolution: The target resolution of the images. Default 28.
-        :type resolution: int
-        :param has_old_scheme: If True, the *labels.json* will be interpreted using the old value for :py:const:`CLASS_OUT` and :py:const:`CLASS_EMPTY`. Default: False.
-        :type has_old_scheme: bool
+        
+
+        Args:
+            base_path(Union[str, Path]): The base path of the images.
+            resolution(int, optional): The target resolution of the images. (Default value = 28)
+            has_old_scheme(bool, optional): If True, the *labels.json* will be interpreted using the old value for
+                :py:data:`CLASS_OUT` and :py:data:`CLASS_EMPTY`. (Default value = False)
+
         """
         self.base_path = Path(base_path)
         self.has_old_scheme = has_old_scheme
@@ -842,17 +872,20 @@ class RealValidationDataset(RealDataset):
     """
     A variant of the :py:class:`RealDataset`, which only retains test_* images and sets the train attributes to empty
     arrays.
+
     """
 
     def _split(self, data: np.ndarray, labels: np.ndarray):
         """
-        Assings the data to the validtion split and sets the train split to empty arrays.
+        Assigns the data to the validtion split and sets the train split to empty arrays.
 
-        :param data: An array of images
-        :type data: :py:class:`np.ndarray`
-        :param labels: An array of labels
-        :type labels: :py:class:`np.ndarray`
-        :return: None
+        Args:
+            data(:py:class:`numpy.ndarray`): An array of images
+            labels(:py:class:`numpy.ndarray`): An array of labels
+
+        Returns:
+            None
+
         """
         self.train_x = np.empty(0, np.uint8)
         self.train_y = np.empty(0, np.uint8)

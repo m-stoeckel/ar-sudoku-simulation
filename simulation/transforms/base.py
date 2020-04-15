@@ -4,19 +4,18 @@ import numpy as np
 
 
 class ImageTransform(metaclass=ABCMeta):
-    """
-    Base class for all image transforms
-
-    """
+    """Base class for all image transforms"""
 
     @abstractmethod
     def apply(self, img: np.ndarray) -> np.ndarray:
         """
         Apply the transformation to the input image.
 
-        :param img: The input image, as a numpy array.
-        :type img: :py:class:`np.ndarray`
-        :return: A new :py:class:`np.ndarray` containing the transformed image.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            img(:py:class:`numpy.ndarray`): The input image, as a numpy array.
+
+        Returns:
+            :py:class:`numpy.ndarray`: A new :py:class:`numpy.ndarray` containing the transformed image.
+
         """
         pass

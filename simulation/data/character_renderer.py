@@ -18,17 +18,19 @@ from simulation.data.fonts import Font
 
 
 class CharacterRenderer:
-    """
-    A simple class to render TrueType fonts.
-    """
+    """A simple class to render TrueType fonts."""
     #: The list of characters to render by default. Includes all numbers, common english letters and some punctuation
     #: marks and brackets.
     char_list = list(u"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-!?(){}[]")
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128):
         """
-        :param render_resolution: The width and height of the output images. Default: 128.
-        :type render_resolution: Union[int, Tuple[int, int]]
+
+
+        Args:
+            render_resolution(Union[int, Tuple[int, int]]): The width and height of the output images.
+                (Default value = 128)
+
         """
         self.render_resolution = get_resolution(render_resolution)
 
@@ -36,14 +38,14 @@ class CharacterRenderer:
         """
         Render a single character with a given font.
 
-        :param char: The character to render.
-        :type char: str
-        :param font: The TrueType font path.
-        :type font: str
-        :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
-        :type mode: str
-        :return: The rendered image as a numpy array.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            char(str): The character to render.
+            font(str): The TrueType font path.
+            mode(str, optional): The Pillow image mode to use for the output image. (Default value = 'RGBA')
+
+        Returns:
+            :py:class:`numpy.ndarray`: The rendered image as a numpy array.
+
         """
         if mode == 'RGBA':
             char_img = Image.new(mode, self.render_resolution)
@@ -60,14 +62,16 @@ class CharacterRenderer:
 
     def prerender_all(self, base_dir=Path("."), mode='RGBA'):
         """
-        Render all characters of the *char_list* and save the images with the given mode.
+        Render all characters of the :py:attr:`char_list` and save the images with the given mode.
 
-        :param base_dir: The base path of the project. The images will be saved in the directory
-            '{base_path}/datasets/characters/' in a separate folder for each character.
-        :type base_dir: Path
-        :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
-        :type mode: str
-        :return: None
+        Args:
+            base_dir(Path, optional): The base path of the project. The images will be saved in the directory
+                '{base_path}/datasets/characters/' in a separate folder for each character. (Default value = Path("."))
+            mode(str, optional): The Pillow image mode to use for the output image. (Default value = 'RGBA')
+
+        Returns:
+            None
+
         """
         character_dir = base_dir / "datasets/characters/"
         character_dir.mkdir(exist_ok=True)
@@ -77,9 +81,12 @@ class CharacterRenderer:
             """
             Helper function for pre-rendering fonts in parallel.
 
-            :param font: The font to pre-render.
-            :type font: Font
-            :return: None
+            Args:
+                font(Font): The font to pre-render.
+
+            Returns:
+                None
+
             """
             # Choose fontsize from resolution
             # Note: The divisor should be 1.3 for unit correctness,
@@ -101,14 +108,17 @@ class SingleFontCharacterRenderer(CharacterRenderer):
     A CharacterRenderer that renders characters in a single font and saves them in a list. By default all characters in
     :py:attr:`char_list` are rendered upon construction. Other characters are rendered in a just-in-time manor, but saved for
     later.
+
     """
 
     def __init__(self, render_resolution: Union[int, Tuple[int, int]] = 128, font=Font.FREE_MONO):
         """
-        :param render_resolution: The width and height of the output images. Default: 128.
-        :type render_resolution: Union[int, Tuple[int, int]]
-        :param font: The font
-        :type font: :class:`<simulation.data.fonts.Font>`
+        
+
+        Args:
+            render_resolution(Union[int, Tuple[int, int]]): The width and height of the output images. Default: 128.
+            font(:py:class:`Font <simulation.data.fonts.Font>`, optional): The font
+                (Default value = :py:attr:`Font.FREE_MONO <simulation.data.fonts.Font.FREE_MONO>`)
         """
         super().__init__(render_resolution)
         self.characters = {}
@@ -148,10 +158,12 @@ def get_resolution(render_resolution: Union[int, Tuple[int, int]]):
     If the input is an integer, returns a new tuple.
     If the input is a tuple, the equality of both first elements is asserted and the tuple returned unchanged.
 
-    :param render_resolution: The resolution.
-    :type render_resolution: Union[int, Tuple[int, int]]
-    :return: A tuple of two ints.
-    :rtype: Tuple[int, int]
+    Args:
+        render_resolution(Union[int, Tuple[int, int]]): The resolution.
+
+    Returns:
+        Tuple[int, int]: A tuple of two ints.
+
     """
     if isinstance(render_resolution, int):
         return render_resolution, render_resolution

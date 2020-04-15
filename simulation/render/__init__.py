@@ -1,4 +1,4 @@
-from .digital_composition import DigitalCompositionMethod, Add, Subtract, Average, Multiply, Threshold, \
+from .composition import DigitalCompositionMethod, Add, Subtract, Average, Multiply, AlphaClip, \
     AlphaComposition, GammaCorrectedAlphaComposition
 from .layers import *
-from .renderer import LayeredPaperRenderer, MeshedLayeredPaperRenderer
+from .renderer import LayeredPaperRenderer

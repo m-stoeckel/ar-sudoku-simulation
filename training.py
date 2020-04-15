@@ -22,9 +22,7 @@ def train_cnn(path="model/", to_simple_digit=False):
     finally evaluated.
 
     :param path: The directory to save the trained model to.
-    :type path: str
     :param to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition.
-    :type to_simple_digit: bool
     :return: None
     """
     os.makedirs(path, exist_ok=True)
@@ -137,11 +135,8 @@ def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator
     Converts a Keras model to a tf.lite byte model.
 
     :param model: The Keras model to convert.
-    :type model: Model
     :param path: The directory path for the model.
-    :type path: str
     :param test_generator: The generator for test files.
-    :type test_generator: BaseDataGenerator
     :return: None
     """
     print("Converting to TFLite model")
@@ -164,11 +159,8 @@ def evaluate_tflite_model(tflite_model_content: bytes, test_generator: BaseDataG
     Evaluate a tf.lite model with the given *test_generator*.
 
     :param tflite_model_content: The tf.lite model content, output of TFLiteConverter.convert().
-    :type tflite_model_content: bytes
     :param test_generator: The generator for test files.
-    :type test_generator: BaseDataGenerator
     :return: The accuracy of the tf.lite model on the test files.
-    :rtype: float
     """
     test_images = test_generator.get_data()
     test_labels = test_generator.get_labels()
@@ -214,13 +206,9 @@ def evaluate(
     Evaluate a given model with the given generator.
 
     :param model: The Keras model to evaluate.
-    :type model: Model
     :param test_generator: The generator for test files.
-    :type test_generator: BaseDataGenerator
     :param binary:
-    :type binary:
     :return: A
-    :rtype: Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`, :py:class:`np.ndarray`]
     """
     x = test_generator.get_data()
     y_true = test_generator.get_labels()
@@ -240,11 +228,8 @@ def evaluate_and_plot(model: Model, test_generator: BaseDataGenerator, binary=Fa
     Evaluate a given model and plot the results on the test_generator to a set of files.
 
     :param model: The model to evaluate.
-    :type model: Model
     :param test_generator: The generator for test files.
-    :type test_generator: BaseDataGenerator
     :param binary: If True, the given model is a binary recognition model.
-    :type binary: bool
     :return: None
     """
     x, y_true, y_pred = evaluate(model, test_generator, binary)
@@ -259,9 +244,7 @@ def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"
     Load and evaluate a model at the given file path.
 
     :param filepath:
-    :type filepath:
     :return:
-    :rtype:
     """
     model = keras.models.load_model(filepath)
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)

@@ -11,11 +11,9 @@ Subpackages
 simulation.render.digital\_composition module
 ---------------------------------------------
 
-.. automodule:: simulation.render.digital_composition
+.. automodule:: simulation.render.composition
    :members:
    :undoc-members:
-   :private-members:
-   :special-members:
    :show-inheritance:
 
 simulation.render.renderer module
@@ -24,6 +22,4 @@ simulation.render.renderer module
 .. automodule:: simulation.render.renderer
    :members:
    :undoc-members:
-   :private-members:
-   :special-members:
    :show-inheritance:

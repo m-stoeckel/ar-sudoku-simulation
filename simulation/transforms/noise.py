@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from simulation import Color
-from simulation.transforms.base import ImageTransform
+from simulation.transforms import ImageTransform
 
 
 class SimpleNoise(ImageTransform, metaclass=ABCMeta):
@@ -14,10 +14,12 @@ class SimpleNoise(ImageTransform, metaclass=ABCMeta):
         """
         Returns the noise as an numpy array of the given shape.
 
-        :param shape: The shape of the noise.
-        :type shape: tuple
-        :return: A numpy array with noise values.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            shape(tuple): The shape of the noise.
+
+        Returns:
+          :py:class:`numpy.ndarray`: A numpy array with noise values.
+
         """
         pass
 
@@ -25,17 +27,20 @@ class SimpleNoise(ImageTransform, metaclass=ABCMeta):
 class UniformNoise(SimpleNoise):
     """
     Adds uniform noise (additive) to input images.
-
+    
     The noise is drawn from an float uniform distribution. The image is cast to float and clipped to uint8 after the
     noise was added.
+
     """
 
     def __init__(self, low=-16, high=16):
         """
-        :param low: Lower bound of the uniform distribution.
-        :type low: float
-        :param high: Upper bound of the uniform distribution.
-        :type high: float
+        
+
+        Args:
+            low(float, optional): Lower bound of the uniform distribution. (Default value = -16)
+            high(float, optional): Upper bound of the uniform distribution. (Default value = 16)
+
         """
         super().__init__()
         self.low = low
@@ -54,17 +59,20 @@ class UniformNoise(SimpleNoise):
 class GaussianNoise(SimpleNoise):
     """
     Adds Gaussian noise (additive) to input images.
-
+    
     Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
     was added.
+
     """
 
     def __init__(self, mu=0.0, sigma=4.0):
         """
-        :param mu: The mean of the Gaussian.
-        :type mu: float
-        :param sigma: The standard deviation of the Gaussian.
-        :type sigma: float
+        
+
+        Args:
+            mu(float, optional): The mean of the Gaussian. (Default value = 0.0)
+            sigma(float, optional): The standard deviation of the Gaussian. (Default value = 4.0)
+
         """
         super().__init__()
         self.mu = mu
@@ -83,17 +91,20 @@ class GaussianNoise(SimpleNoise):
 class SpeckleNoise(GaussianNoise):
     """
     Adds Gaussian noise (multiplicative) to input images.
-
+    
     Noise is drawn from a float Gaussian normal. The image is cast to float and clipped to uint8 after the noise
     was added.
+
     """
 
     def __init__(self, mu=0., sigma=4.0):
         """
-        :param mu: The mean of the Gaussian.
-        :type mu: float
-        :param sigma: The standard deviation of the Gaussian.
-        :type sigma: float
+        
+
+        Args:
+            mu(float, optional): The mean of the Gaussian. (Default value = 0.)
+            sigma(float, optional): The standard deviation of the Gaussian. (Default value = 4.0)
+
         """
         super().__init__(mu, sigma)
         self.mu /= 255.
@@ -110,8 +121,9 @@ class SpeckleNoise(GaussianNoise):
 class PoissonNoise(ImageTransform):
     """
     Adds data dependent poisson noise to input images.
+    
+    :sources: https://stackoverflow.com/a/30609854
 
-    :source: https://stackoverflow.com/a/30609854
     """
 
     def apply(self, img: np.ndarray) -> np.ndarray:
@@ -123,17 +135,16 @@ class PoissonNoise(ImageTransform):
 
 
 class SaltAndPepperNoise(ImageTransform):
-    """
-    Sets random single pixels to black or white white.
-    """
+    """Sets random single pixels to black or white white."""
 
     def __init__(self, amount: Union[int, float] = 0.01, ratio=0.5):
         """
-        :param amount: Salt & pepper amount.
-        :type amount: float
-        :param ratio: Salt vs. pepper ratio.
-        :type ratio: float
-        :source: https://stackoverflow.com/a/30609854
+        :sources: https://stackoverflow.com/a/30609854
+
+        Args:
+          amount(float): Salt & pepper amount.
+          ratio(float, optional): Salt vs. pepper ratio. (Default value = 0.5)
+
         """
         super().__init__()
         self.amount = amount
@@ -168,12 +179,18 @@ class GrainNoise(SaltAndPepperNoise):
     """
     A variant of `SaltAndPepperNoise`__ which adds larger white grains by using reshaping, dilation and JPEG encoding
     with zero pepper SaltAndPepperNoise.
+
     """
 
     def __init__(self, amount=0.0005, iterations=2, shape=(102, 102)):
         """
-        :param amount: Salt & pepper amount.
-        :type amount: float
+        
+
+        Args:
+          amount(float, optional): Salt amount. (Default value = 0.0005)
+          iterations(int): The number of iterations. (Default value = 2)
+          shape(Tuple[int, int]): The intermediate scaling shape. (Default value = (102, 102)
+
         """
         super().__init__(amount, 1)
         self.iterations = iterations
@@ -194,16 +211,21 @@ class GrainNoise(SaltAndPepperNoise):
 class EmbedInRectangle(ImageTransform):
     """
     Embeds images in a white rectangle.
+    
+    The given image is inserted into the center of a new, empty image with the given :py:attr:`inset`.
+    Then, a rectangle is drawn at the half the :py:attr:`inset` distance to the border. Finally, the a random crop to
+    the original image shape is performed and the new image is returned.
 
-    The given image is inserted into the center of a new, empty image with the given *inset*.
-    Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
-    original image shape is performed and the new image is returned.
     """
 
     def __init__(self, inset=0.1, thickness=1):
         """
-        :param inset: The distance to inset the processed image by, in percent.
-        :type inset: float
+        
+
+        Args:
+            inset(float, optional): The distance to inset the processed image by, in percent. (Default value = 0.1)
+            thickness(int, optional): The thickness of the rectangle. (Default value = 1)
+
         """
         super().__init__()
         self.inset = inset
@@ -211,28 +233,7 @@ class EmbedInRectangle(ImageTransform):
         self.thickness = thickness
 
     def apply(self, img: np.ndarray) -> np.ndarray:
-        if self.inset > 0:
-            if len(img.shape) == 3:
-                grid_image_shape = (
-                    int(img.shape[0] + self.inset * img.shape[0]),
-                    int(img.shape[1] + self.inset * img.shape[1]),
-                    img.shape[2]
-                )
-            else:
-                grid_image_shape = (
-                    int(img.shape[0] + self.inset * img.shape[0]),
-                    int(img.shape[1] + self.inset * img.shape[1]),
-                )
-        else:
-            grid_image_shape = img.shape
-
-        grid_image = np.full(grid_image_shape, 0, dtype=np.uint8)
-        offset_x, offset_y = int(abs(self.offset * img.shape[0])), int(abs(self.offset * img.shape[1]))
-
-        if self.inset > 0:
-            grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
-        else:
-            grid_image = img.copy()
+        grid_image, offset_x, offset_y = self.expand_image(img)
 
         grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
         cv2.rectangle(grid_image, (offset_x, offset_y),
@@ -244,41 +245,17 @@ class EmbedInRectangle(ImageTransform):
         else:
             return grid_image
 
-    @staticmethod
-    def random_crop(grid_img: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+    def expand_image(self, img):
         """
-        Randomly crops the input image to the given shape.
+        Get the expanded image on which the grid is drawn where the original image is in the center.
 
-        :param grid_img: Input image to be cropped.
-        :type grid_img: :py:class:`np.ndarray`
-        :param shape: The new shape.
-        :type shape: Tuple[int, int]
-        :return: The cropped image.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            img: The image to be expanded.
+
+        Returns:
+            The expanded image.
+
         """
-        offset = np.array(grid_img.shape) - np.array(shape)
-        offset_x = np.random.randint(0, offset[0])
-        offset_y = np.random.randint(0, offset[1])
-        return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]
-
-
-class EmbedInGrid(EmbedInRectangle):
-    """
-    Embeds images in a white rectangle.
-
-    The given image is inserted into the center of a new, empty image with the given *inset*.
-    Then, a rectangle is drawn at the half the *inset* distance to the border. Finally, the a random crop to the
-    original image shape is performed and the new image is returned.
-    """
-
-    def __init__(self, inset=0.2, thickness=1):
-        """
-        :param inset: The distance to inset the processed image by, in percent.
-        :type inset: float
-        """
-        super().__init__(inset, thickness)
-
-    def apply(self, img: np.ndarray) -> np.ndarray:
         if self.inset > 0:
             if len(img.shape) == 3:
                 grid_image_shape = (
@@ -301,6 +278,51 @@ class EmbedInGrid(EmbedInRectangle):
             grid_image[offset_x:offset_x + img.shape[0], offset_y:offset_y + img.shape[1]] = img
         else:
             grid_image = img.copy()
+
+        return grid_image, offset_x, offset_y
+
+    @staticmethod
+    def random_crop(grid_img: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+        """
+        Randomly crops the input image to the given shape.
+
+        Args:
+              grid_img(:py:class:`numpy.ndarray`): Input image to be cropped.
+              shape(Tuple[int, int]): The new shape.
+
+        Returns:
+            :py:class:`numpy.ndarray`: The cropped image.
+
+        """
+        offset = np.array(grid_img.shape) - np.array(shape)
+        offset_x = np.random.randint(0, offset[0])
+        offset_y = np.random.randint(0, offset[1])
+        return grid_img[offset_x:offset_x + shape[0], offset_y:offset_y + shape[1]]
+
+
+class EmbedInGrid(EmbedInRectangle):
+    """
+    Embeds images in a white rectangle.
+    
+    The given image is inserted into the center of a new, empty image with the given :py:attr:`inset`.
+    Then, a rectangle is drawn at the half the :py:attr:`inset` distance to the border. Finally, the a random crop to
+    the original image shape is performed and the new image is returned.
+
+    """
+
+    def __init__(self, inset=0.2, thickness=1):
+        """
+        
+
+        Args:
+            inset(float, optional): The distance to inset the processed image by, in percent. (Default value = 0.2)
+            thickness(int, optional): The thickness of the grid. (Default value = 1)
+
+        """
+        super().__init__(inset, thickness)
+
+    def apply(self, img: np.ndarray) -> np.ndarray:
+        grid_image, offset_x, offset_y = self.expand_image(img)
 
         # Draw grid lines
         cv2.line(grid_image, (offset_x, 0), (offset_x, grid_image.shape[0]), Color.WHITE.value, self.thickness)
@@ -319,14 +341,15 @@ class EmbedInGrid(EmbedInRectangle):
 
 
 class JPEGEncode(ImageTransform):
-    """
-    Encode and subsequently decode the input image using the JPEG algorithm with the supplied *quality*.
-    """
+    """Encode and subsequently decode the input image using the JPEG algorithm with the supplied :py:attr:`quality`."""
 
     def __init__(self, quality=80):
         """
-        :param quality: The quality parameter for the JPEG algorithm.
-        :type quality: int.
+        
+
+        Args:
+            quality(int, optional): The quality parameter for the JPEG algorithm. (Default value = 80)
+
         """
         self.quality = quality
 

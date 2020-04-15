@@ -1,37 +1,70 @@
+from abc import ABCMeta, abstractmethod
+
 import cv2
 import numpy as np
 
 
-class DigitalCompositionMethod:
+class DigitalCompositionMethod(metaclass=ABCMeta):
+    """
+    Abstract base class for all composition methods.
+    """
+
+    @abstractmethod
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+        pass
 
     def __call__(self, *args, **kwargs):
         return self.apply(*args, **kwargs)
 
 
 class Add(DigitalCompositionMethod):
+    """
+    Adds two images. Resulting values are computed as full integer and clipped to uint8 afterwards.
+    """
+
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
         return np.clip(background_rgba.astype(np.int) + overlay_rgba.astype(np.int), 0, 255).astype(np.uint8)
 
 
 class Subtract(DigitalCompositionMethod):
+    """
+    Subtracts two images. Resulting values are computed as full integer and clipped to uint8 afterwards.
+    """
+
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
         return np.clip(background_rgba.astype(np.int) - overlay_rgba.astype(np.int), 0, 255).astype(np.uint8)
 
 
 class Average(DigitalCompositionMethod):
+    """
+    Computes the average of two images using :py:meth:`cv2.addWeighted()` with equal weights of 0.5.
+    """
+
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
         return cv2.addWeighted(background_rgba, 0.5, overlay_rgba, 0.5, 0)
 
 
 class Multiply(DigitalCompositionMethod):
+    """
+    Multiplies two images. Resulting values are computed as full integer and clipped to uint8 afterwards.
+    """
+
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
         return np.clip(background_rgba.astype(np.int) * overlay_rgba.astype(np.int), 0, 255).astype(np.uint8)
 
 
-class Threshold(DigitalCompositionMethod):
+class AlphaClip(DigitalCompositionMethod):
+    """
+    Composes two images by clipping away all pixels of the overlay image whose alpha value is 0.
+    """
+
     def __init__(self, reset_alpha=True):
+        """
+
+        Args:
+            reset_alpha(bool): If True, reset the alpha channel after composing the two images.
+
+        """
         super().__init__()
         self.reset_alpha = reset_alpha
 
@@ -40,8 +73,8 @@ class Threshold(DigitalCompositionMethod):
         img = cv2.bitwise_and(background_rgba, background_rgba, mask=mask)
         img = cv2.add(img, overlay_rgba)
         if self.reset_alpha:
+            mask = self.get_bool_mask_from_color(img)
             img[:, :, 3] = 0
-            mask = self.get_bool_mask_from_alpha(img)
             img[mask, 3] = 255
         return img
 
@@ -52,11 +85,11 @@ class Threshold(DigitalCompositionMethod):
 
     @staticmethod
     def get_bool_mask_from_alpha(image):
-        return Threshold.get_mask_from_alpha(image).astype(np.bool)
+        return AlphaClip.get_mask_from_alpha(image).astype(np.bool)
 
     @staticmethod
     def get_mask_from_color(image):
-        mask = Threshold.get_bool_mask_from_color(image)
+        mask = AlphaClip.get_bool_mask_from_color(image)
         ret = np.zeros_like(mask, 0, dtype=np.uint8)
         ret[mask] = 255
         return ret
@@ -67,7 +100,17 @@ class Threshold(DigitalCompositionMethod):
 
 
 class AlphaComposition(DigitalCompositionMethod):
+    """
+    Combines the input images using alpha composition.
+    """
+
     def __init__(self, alpha=1.0, gamma=1.0):
+        """
+
+        Args:
+            alpha(float): Alpha scaling factor. (Default value = 1.0)
+            gamma(float): Gamma value for the alpha composition algorithm. (Default value: 1.0)
+        """
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
@@ -77,13 +120,21 @@ class AlphaComposition(DigitalCompositionMethod):
             background_rgba = cv2.cvtColor(background_rgba, cv2.COLOR_RGB2RGBA)
         return self._composite_alpha(background_rgba, overlay_rgba)
 
-    def _composite_alpha(self, background_rgba, overlay_rgba):
+    def _composite_alpha(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
         """
-        TODO: comment
+        Applies alpha composition to the two given images.
 
         :sources:
             - https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
             - https://gist.github.com/pthom/5155d319a7957a38aeb2ac9e54cc0999
+
+        Args:
+            background_rgba(:py:class:`numpy.ndarray`): Background image.
+            overlay_rgba(:py:class:`numpy.ndarray`): Overlay image.
+
+        Returns:
+            :py:class:`numpy.ndarray`: The composed image.
+
         """
         # get normalized alpha channels and scale overlay with alpha parameter
         overlay_alpha = self.get_alpha_from_rgba(overlay_rgba)
@@ -121,5 +172,15 @@ class AlphaComposition(DigitalCompositionMethod):
 
 
 class GammaCorrectedAlphaComposition(AlphaComposition, DigitalCompositionMethod):
+    """
+    A variant of :py:class:`AlphaComposition` that uses 2.2 as default gamma.
+    """
+
     def __init__(self, alpha=1.0, gamma=2.2):
+        """
+
+        Args:
+            alpha(float): Alpha scaling factor. (Default value = 1.0)
+            gamma(float): Gamma value for the alpha composition algorithm. (Default value: 2.2)
+        """
         super().__init__(alpha, gamma)

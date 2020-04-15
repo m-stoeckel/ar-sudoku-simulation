@@ -7,7 +7,13 @@ DEBUG = False
 
 
 class Sudoku:
-    # TODO: cite sources
+    """
+    Sudoku class.
+
+    :sources:
+        - https://github.com/MorvanZhou/sudoku
+    """
+
     def __init__(self, data=None):
         if data is not None:
             self.data = data
@@ -90,7 +96,12 @@ class Sudoku:
         Returns True if Sudoku is solved and valid by asserting each number only occurs once per row, column or
         field.
 
-        :return: True if valid, else False
+        Args:
+            arr:
+
+        Returns:
+             True if valid, else False
+
         """
         for i in range(9):
             set_row = set(arr[i, :]).difference({0})
@@ -106,6 +117,10 @@ class Sudoku:
 
 
 class SudokuGenerator:
+    """
+    Sudoku generator that uses the multiprocessing library to speed up the generation of multiple Sudokus.
+    """
+
     def __init__(self, n: int, workers=1):
         self.generated: List[Sudoku] = []
         self.n = n
@@ -117,6 +132,7 @@ class SudokuGenerator:
         Main sudoku generation method. Spawns self.workers processes each of which creates the same number of sudokus.
         If the number of sudokus to be generated is not a multiple of the number of desired workers, an additional
         process is spawned to produce the remaining number of sudokus.
+
         """
         nums = np.arange(0, self.n, dtype=np.int)
         out_q = mp.Queue()

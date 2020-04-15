@@ -3,18 +3,19 @@ from typing import *
 import cv2
 import numpy as np
 
-from simulation.transforms.base import ImageTransform
+from simulation.transforms import ImageTransform
 
 
 class Filter(ImageTransform):
-    """
-    Base class for all filtering operations.
-    """
+    """Base class for all filtering operations."""
 
     def __init__(self, iterations):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int): The number of iterations.
+
         """
         self.iterations = iterations
         self.kernel = np.array([[0, 0, 0, 0, 0],
@@ -27,10 +28,12 @@ class Filter(ImageTransform):
         """
         Apply the transformation to the input image for *iteration* number of times.
 
-        :param img: The input image, as a numpy array.
-        :type img: :py:class:`np.ndarray`
-        :return: A new :py:class:`np.ndarray` containing the transformed image.
-        :rtype: :py:class:`np.ndarray`
+        Args:
+            img(:py:class:`numpy.ndarray`): The input image, as a numpy array.
+
+        Returns:
+            :py:class:`numpy.ndarray`: A new :py:class:`numpy.ndarray` containing the transformed image.
+
         """
         for _ in range(self.iterations):
             img = cv2.filter2D(img.astype(np.float), -1, self.kernel)
@@ -38,16 +41,16 @@ class Filter(ImageTransform):
 
 
 class BoxBlur(Filter):
-    """
-    Applies box blur to input images.
-    """
+    """Applies box blur to input images."""
 
     def __init__(self, ksize=3, iterations=1):
         """
-        :param ksize: The kernel size.
-        :type ksize: int
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            ksize(int, optional): The kernel size. (Default value = 3)
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.ksize = ksize if isinstance(ksize, tuple) else (ksize, ksize)
@@ -59,18 +62,18 @@ class BoxBlur(Filter):
 
 
 class GaussianBlur(Filter):
-    """
-    Applies Gaussian blur to input images.
-    """
+    """Applies Gaussian blur to input images."""
 
     def __init__(self, ksize: Union[int, tuple] = 3, sigma=0, iterations=1):
         """
-        :param ksize: The kernel size, must be odd.
-        :type ksize: Union[int, tuple]
-        :param sigma: The standard deviation of the Gaussian in both x and y direction.
-        :type sigma: float
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            ksize(Union[int, tuple]): The kernel size, must be odd.
+            sigma(float, optional): The standard deviation of the Gaussian in both x and y direction.
+                (Default value = 0)
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.ksize = ksize if isinstance(ksize, tuple) else (ksize, ksize)
@@ -83,18 +86,17 @@ class GaussianBlur(Filter):
 
 
 class Dilate(Filter):
-    """
-    Dilate the image using a gaussian kernel as structural element.
-    """
+    """Dilate the image using a gaussian kernel as structural element."""
 
     def __init__(self, shape=cv2.MORPH_ELLIPSE, size=(3, 3), iterations=1):
         """
-        :param shape: The OpenCV dilation morphing shape to use.
-        :type shape: int
-        :param size: The size of the structural element kernel.
-        :type size: Tuple[int, int]
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            shape(int, optional): The OpenCV dilation morphing shape to use. (Default value = cv2.MORPH_ELLIPSE)
+            size(Tuple[int, int], optional): The size of the structural element kernel. (Default value = (3, 3))
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = cv2.getStructuringElement(shape, size)
@@ -105,16 +107,16 @@ class Dilate(Filter):
 
 
 class DilateSoft(Filter):
-    """
-    Dilate the images using a Gaussian kernel as structural element.
-    """
+    """Dilate the images using a Gaussian kernel as structural element."""
 
     def __init__(self, size=(3, 3), iterations=1):
         """
-        :param size: Size of the Gaussian.
-        :type size: tuple[int, int]
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            size(tuple[int, int], optional): Size of the Gaussian. (Default value = (3, 3))
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = cv2.getGaussianKernel(size, 0)
@@ -125,14 +127,15 @@ class DilateSoft(Filter):
 
 
 class SharpenFilter(Filter):
-    """
-    Applies a 3x3 sharpening filter to input images.
-    """
+    """Applies a 3x3 sharpening filter to input images."""
 
     def __init__(self, iterations=1):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = np.array([[0, -1, 0],
@@ -141,14 +144,15 @@ class SharpenFilter(Filter):
 
 
 class ReliefFilter(Filter):
-    """
-    Applies a 3x3 relief filter.
-    """
+    """Applies a 3x3 relief filter."""
 
     def __init__(self, iterations=1):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = np.array([[-2, -1, 0],
@@ -157,14 +161,15 @@ class ReliefFilter(Filter):
 
 
 class EdgeFilter(Filter):
-    """
-    Applies a 3x3 edge detection filter.
-    """
+    """Applies a 3x3 edge detection filter."""
 
     def __init__(self, iterations=1):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = 1 / 4. * np.array([[1, 2, 1],
@@ -173,14 +178,15 @@ class EdgeFilter(Filter):
 
 
 class UnsharpMaskingFilter3x3(Filter):
-    """
-    Applies a 3x3 unsharp masking filter.
-    """
+    """Applies a 3x3 unsharp masking filter."""
 
     def __init__(self, iterations=1):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = 1 / 16. * np.array([[-1, -2, -1],
@@ -189,14 +195,15 @@ class UnsharpMaskingFilter3x3(Filter):
 
 
 class UnsharpMaskingFilter5x5(Filter):
-    """
-    Applies a 5x5 unsharp masking filter.
-    """
+    """Applies a 5x5 unsharp masking filter."""
 
     def __init__(self, iterations=1):
         """
-        :param iterations: The number of iterations.
-        :type iterations: int
+        
+
+        Args:
+            iterations(int, optional): The number of iterations. (Default value = 1)
+
         """
         super().__init__(iterations)
         self.kernel = 1 / 256. * np.array([[-1., -4., -6., -4., -1],
