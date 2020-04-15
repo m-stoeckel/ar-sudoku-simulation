@@ -17,7 +17,7 @@ class SimpleNoise(ImageTransform, metaclass=ABCMeta):
         :param shape: The shape of the noise.
         :type shape: tuple
         :return: A numpy array with noise values.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         pass
 
@@ -250,11 +250,11 @@ class EmbedInRectangle(ImageTransform):
         Randomly crops the input image to the given shape.
 
         :param grid_img: Input image to be cropped.
-        :type grid_img: numpy.ndarray
+        :type grid_img: :py:class:`np.ndarray`
         :param shape: The new shape.
         :type shape: Tuple[int, int]
         :return: The cropped image.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         offset = np.array(grid_img.shape) - np.array(shape)
         offset_x = np.random.randint(0, offset[0])

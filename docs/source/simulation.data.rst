@@ -8,6 +8,7 @@ simulation.data.character\_renderer module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.data.data\_generator module
@@ -17,6 +18,7 @@ simulation.data.data\_generator module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.data.dataset module
@@ -26,6 +28,7 @@ simulation.data.dataset module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.data.fonts module
@@ -35,4 +38,5 @@ simulation.data.fonts module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:

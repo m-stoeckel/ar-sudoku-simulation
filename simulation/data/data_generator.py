@@ -9,13 +9,10 @@ from deprecated.sphinx import deprecated
 from simulation.data.dataset import CharacterDataset
 
 
-@deprecated
+@deprecated(version="1.0.0")
 class DigitDataGenerator(keras.utils.Sequence):
     """
     Generator for a single dataset.
-
-    .. deprecated:: 1.0.0
-       Use :py:class:`BaseDataGenerator` instead.
     """
 
     def __init__(
@@ -69,7 +66,7 @@ class BaseDataGenerator(keras.utils.Sequence, metaclass=ABCMeta):
         Get all data from this generator as a single array. The array contains normalized floats.
 
         :return: All data of this generator as a float array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         pass
 
@@ -79,7 +76,7 @@ class BaseDataGenerator(keras.utils.Sequence, metaclass=ABCMeta):
         Get all labels of this generator in a single array.
 
         :return: All labels of this generator as an integer array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         pass
 
@@ -103,7 +100,7 @@ class BalancedDataGenerator(BaseDataGenerator):
     ):
         """
         :param datasets: A sequence of tuples, one for each dataset containing (data, labels).
-        :type datasets: *Tuple[np.ndarray, np.ndarray]
+        :type datasets: *Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`]
         :param batch_size: The batch size. Should be divisible by the number of datasets.
         :type batch_size: int
         :param shuffle: If True, shuffle the datasets at the end of each epoch. Default: True.
@@ -176,8 +173,8 @@ class BalancedDataGenerator(BaseDataGenerator):
 
         :param index: The batch number.
         :type index: int
-        :return: Returns a tuple of a 4-dimensional ndarray and the class-categorical label ndarray
-        :rtype: Tuple[np.ndarray, np.ndarray]
+        :return: Returns a tuple of a 4-dimensional :py:class:`np.ndarray` and the class-categorical label :py:class:`np.ndarray`
+        :rtype: Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`]
         """
         # Generate indices of the batch
         indices = [dataset_indices[index * self.mini_batch_size:(index + 1) * self.mini_batch_size]
@@ -326,7 +323,7 @@ class SimpleDataGenerator(BaseDataGenerator):
     ):
         """
         :param datasets: The input datasets as a sequence of (data, label) tuples.
-        :type datasets: *Tuple[numpy.ndarray, numpy.ndarray]
+        :type datasets: *Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`]
         :param batch_size: The batch size.
         :type batch_size: int
         :param shuffle: If True, shuffle the datasets at the end of each epoch. Default: True.
@@ -383,8 +380,8 @@ class SimpleDataGenerator(BaseDataGenerator):
 
         :param index: The batch number.
         :type index: int
-        :return: Returns a tuple of a 4-dimensional ndarray and the class-categorical label ndarray
-        :rtype: Tuple[np.ndarray, np.ndarray]
+        :return: Returns a tuple of a 4-dimensional :py:class:`np.ndarray` and the class-categorical label :py:class:`np.ndarray`
+        :rtype: Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`]
         """
         # Generate indices of the batch
         indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]

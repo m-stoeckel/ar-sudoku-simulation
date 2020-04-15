@@ -69,7 +69,7 @@ def train_cnn(path="model/", to_simple_digit=False):
     )
 
     # Run training on the GPU
-    with tf.device('/GPU:0'):
+    with tf.device('/CPU:0'):
         # Keras Model
         print("Creating model..")
         model = Sequential()
@@ -220,7 +220,7 @@ def evaluate(
     :param binary:
     :type binary:
     :return: A
-    :rtype: Tuple[np.ndarray, np.ndarray, np.ndarray]
+    :rtype: Tuple[:py:class:`np.ndarray`, :py:class:`np.ndarray`, :py:class:`np.ndarray`]
     """
     x = test_generator.get_data()
     y_true = test_generator.get_labels()

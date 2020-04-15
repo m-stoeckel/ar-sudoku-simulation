@@ -43,7 +43,7 @@ class CharacterRenderer:
         :param mode: The Pillow image mode to use for the output image. Default: 'RGBA'.
         :type mode: str
         :return: The rendered image as a numpy array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         if mode == 'RGBA':
             char_img = Image.new(mode, self.render_resolution)

@@ -11,6 +11,7 @@ simulation.render.layers.base\_layers module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.render.layers.sudoku\_layer module
@@ -20,6 +21,7 @@ simulation.render.layers.sudoku\_layer module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 
@@ -30,4 +32,5 @@ Module contents
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:

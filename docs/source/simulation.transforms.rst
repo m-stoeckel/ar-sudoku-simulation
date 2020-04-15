@@ -8,6 +8,7 @@ simulation.transforms.base module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.transforms.filter module
@@ -17,6 +18,7 @@ simulation.transforms.filter module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.transforms.noise module
@@ -26,6 +28,7 @@ simulation.transforms.noise module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.transforms.perspective module
@@ -35,6 +38,7 @@ simulation.transforms.perspective module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.transforms.scale module
@@ -44,4 +48,5 @@ simulation.transforms.scale module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:

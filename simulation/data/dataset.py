@@ -195,12 +195,12 @@ class CharacterDataset(metaclass=ABCMeta):
             new_test_x[n_test * i:n_test * (i + 1)] = test_x_i
 
         # save new data
-        self.train_x = new_train_x
-        self.test_x = new_test_x
+        self.train_x: np.ndarray = new_train_x
+        self.test_x: np.ndarray = new_test_x
 
         # duplicate labels
-        self.train_y = np.tile(self.train_y, int(keep) + n_transforms)
-        self.test_y = np.tile(self.test_y, int(keep) + n_transforms)
+        self.train_y: np.ndarray = np.tile(self.train_y, int(keep) + n_transforms)
+        self.test_y: np.ndarray = np.tile(self.test_y, int(keep) + n_transforms)
 
         if clear:
             self.transforms.clear()
@@ -227,13 +227,13 @@ class CharacterDataset(metaclass=ABCMeta):
         :py:data:`iterpolation` method.
 
         :param data: An array of images.
-        :type data: numpy.ndarray
+        :type data: :py:class:`np.ndarray`
         :param resolution: The desired width/height of the images.
         :type resolution: int
         :param interpolation: A OpenCV interpolation method code.
         :type interpolation: int
         :return: The resized images as an numpy array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
 
         def _do_resize(img) -> np.ndarray:
@@ -241,9 +241,9 @@ class CharacterDataset(metaclass=ABCMeta):
             Helper function for resizing images in parallel.
 
             :param img: The image to resize.
-            :type img: numpy.ndarray
+            :type img: :py:class:`np.ndarray`
             :return: The resized image
-            :rtype: numpy.ndarray
+            :rtype: :py:class:`np.ndarray`
             """
             img = cv2.resize(img, (resolution, resolution), interpolation=interpolation)
             return img
@@ -284,11 +284,11 @@ class CharacterDataset(metaclass=ABCMeta):
         Helper function to convert all images in :py:data:`data` to the given colorspace.
 
         :param data: An array of images.
-        :type data: numpy.ndarray
+        :type data: :py:class:`np.ndarray`
         :param mode: An OpenCV colorspace code.
         :type mode: int
         :return: The images in the new colorspace as an numpy array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         if mode == cv2.COLOR_GRAY2BGRA:
             # If mode is grayscale to RGBA, use optimized code instead of ordinary cvtColor
@@ -334,14 +334,14 @@ class CharacterDataset(metaclass=ABCMeta):
         self.test_x = self._get_inverted(self.test_x)
 
     @staticmethod
-    def _get_inverted(data):
+    def _get_inverted(data: np.ndarray):
         """
         Helper function to invert all images in :py:data:`data`.
 
         :param data: An array of images to invert.
-        :type data: numpy.ndarray
+        :type data: :py:class:`np.ndarray`
         :return: The inverted images.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         tq = tqdm(desc="Inverting images", total=data.shape[0])
         cv2.bitwise_not(data, data)
@@ -380,7 +380,7 @@ class CharacterDataset(metaclass=ABCMeta):
         Helper function to induce the alpha for all images in :py:data:`data`.
         
         :param data: An array of images to induce the alpha values for.
-        :type data: numpy.ndarray
+        :type data: :py:class:`np.ndarray`
         :param average_color: If True, set alpha value to the average of all color channels for each pixel (default).
         :type average_color: Optional[Tuple[int]]
         :param alpha_zero_value: If given, set the alpha value to zero for this value and to 255 for all others.
@@ -390,7 +390,7 @@ class CharacterDataset(metaclass=ABCMeta):
         :param invert: If True, invert the alpha values. Default: True.
         :type invert: bool
         :return: The images with new alpha values.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         tq = tqdm(desc="Inducing alpha", total=data.shape[0])
         if average_color is not None:
@@ -849,9 +849,9 @@ class RealValidationDataset(RealDataset):
         Assings the data to the validtion split and sets the train split to empty arrays.
 
         :param data: An array of images
-        :type data: numpy.ndarray
+        :type data: :py:class:`np.ndarray`
         :param labels: An array of labels
-        :type labels: np.ndarray
+        :type labels: :py:class:`np.ndarray`
         :return: None
         """
         self.train_x = np.empty(0, np.uint8)

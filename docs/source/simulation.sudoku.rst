@@ -8,6 +8,7 @@ simulation.sudoku.sudoku\_generator module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.sudoku.sudoku\_permutation module
@@ -17,4 +18,5 @@ simulation.sudoku.sudoku\_permutation module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:

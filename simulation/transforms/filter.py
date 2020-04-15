@@ -28,9 +28,9 @@ class Filter(ImageTransform):
         Apply the transformation to the input image for *iteration* number of times.
 
         :param img: The input image, as a numpy array.
-        :type img: np.ndarray
-        :return: A new ndarray containing the transformed image.
-        :rtype: np.ndarray
+        :type img: :py:class:`np.ndarray`
+        :return: A new :py:class:`np.ndarray` containing the transformed image.
+        :rtype: :py:class:`np.ndarray`
         """
         for _ in range(self.iterations):
             img = cv2.filter2D(img.astype(np.float), -1, self.kernel)

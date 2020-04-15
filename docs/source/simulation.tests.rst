@@ -8,6 +8,7 @@ simulation.tests.test\_character\_provider module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.tests.test\_dataset module
@@ -17,6 +18,7 @@ simulation.tests.test\_dataset module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.tests.test\_image\_transforms module
@@ -26,6 +28,7 @@ simulation.tests.test\_image\_transforms module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.tests.test\_paper\_renderer module
@@ -35,4 +38,5 @@ simulation.tests.test\_paper\_renderer module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:

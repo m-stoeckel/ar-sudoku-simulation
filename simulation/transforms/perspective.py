@@ -58,7 +58,7 @@ class RandomPerspectiveTransform(ImageTransform):
         :param x_dim: The shape of input image along the x-axis.
         :type x_dim: int
         :return: A 4-dimensional array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         return np.random.randint(0, np.floor(x_dim * self.max_shift) + 1, 4)
 
@@ -69,7 +69,7 @@ class RandomPerspectiveTransform(ImageTransform):
         :param y_dim: The shape of input image along the y-axis.
         :type y_dim: int
         :return: A 4-dimensional array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         return np.random.randint(0, np.floor(y_dim * self.max_shift) + 1, 4)
 
@@ -94,7 +94,7 @@ class RandomPerspectiveTransformX(RandomPerspectiveTransform):
         Returns a 4-dimensional 0-array.
 
         :return: A 4-dimensional 0-array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         return np.zeros(4)
 
@@ -110,7 +110,7 @@ class RandomPerspectiveTransformY(RandomPerspectiveTransform):
         Returns a 4-dimensional 0-array.
 
         :return: A 4-dimensional 0-array.
-        :rtype: numpy.ndarray
+        :rtype: :py:class:`np.ndarray`
         """
         return np.zeros(4)
 

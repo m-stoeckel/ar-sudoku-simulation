@@ -15,6 +15,7 @@ simulation.render.digital\_composition module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
 
 simulation.render.renderer module
@@ -24,4 +25,5 @@ simulation.render.renderer module
    :members:
    :undoc-members:
    :private-members:
+   :special-members:
    :show-inheritance:
