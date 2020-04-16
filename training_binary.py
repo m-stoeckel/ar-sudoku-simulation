@@ -70,7 +70,7 @@ def train_binary_model():
     )
 
     # Run training on the GPU
-    with tf.device('/CPU:0'):
+    with tf.device('/GPU:0'):
         # Keras Model
         print("Creating model..")
         model = get_cnn_binary_model()

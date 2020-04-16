@@ -67,7 +67,7 @@ def train_cnn(path="model/", to_simple_digit=False):
     )
 
     # Run training on the GPU
-    with tf.device('/CPU:0'):
+    with tf.device('/GPU:0'):
         # Keras Model
         print("Creating model..")
         model = Sequential()
