@@ -1,9 +1,6 @@
 simulation.render package
 =========================
 
-Subpackages
------------
-
 .. toctree::
 
    simulation.render.layers

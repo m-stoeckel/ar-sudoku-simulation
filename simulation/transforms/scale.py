@@ -19,7 +19,7 @@ class Rescale(ImageTransform):
         and consecutively scaling it back to its original size again.
 
         Args:
-            size(Tuple[int, int]): The intermediate size of the transforms.
+            size(tuple[int, int]): The intermediate size of the transforms.
             inter_initial(inter_initial: int, optional): The initial OpenCV interpolation algorithm.
                 (Default value = cv2.INTER_AREA)
             inter_consecutive(inter_consecutive: int, optional): The consecutive rescaling OpenCV interpolation
@@ -56,8 +56,8 @@ class RescaleIntermediateTransforms(Rescale):
         and consecutively scaling it back to its original size again.
 
         Args:
-            size(Tuple[int, int]): The intermediate size of the transforms.
-            intermediate_transforms(List[ImageTransform]): A list of transforms to be applied after the initial rescale.
+            size(tuple[int, int]): The intermediate size of the transforms.
+            intermediate_transforms(list[ImageTransform]): A list of transforms to be applied after the initial rescale.
             inter_initial(inter_initial: int, optional): The initial OpenCV interpolation algorithm.
                 (Default value = cv2.INTER_AREA)
             inter_consecutive(inter_consecutive: int, optional): The consecutive rescaling OpenCV interpolation

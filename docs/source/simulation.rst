@@ -1,9 +1,6 @@
 simulation package
 ==================
 
-Subpackages
------------
-
 .. toctree::
 
    simulation.data

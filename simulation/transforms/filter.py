@@ -1,4 +1,4 @@
-from typing import *
+from typing import Union
 
 import cv2
 import numpy as np
@@ -94,7 +94,7 @@ class Dilate(Filter):
 
         Args:
             shape(int, optional): The OpenCV dilation morphing shape to use. (Default value = cv2.MORPH_ELLIPSE)
-            size(Tuple[int, int], optional): The size of the structural element kernel. (Default value = (3, 3))
+            size(tuple[int, int], optional): The size of the structural element kernel. (Default value = (3, 3))
             iterations(int, optional): The number of iterations. (Default value = 1)
 
         """

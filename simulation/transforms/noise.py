@@ -189,7 +189,7 @@ class GrainNoise(SaltAndPepperNoise):
         Args:
           amount(float, optional): Salt amount. (Default value = 0.0005)
           iterations(int): The number of iterations. (Default value = 2)
-          shape(Tuple[int, int]): The intermediate scaling shape. (Default value = (102, 102)
+          shape(tuple[int, int]): The intermediate scaling shape. (Default value = (102, 102)
 
         """
         super().__init__(amount, 1)
@@ -288,7 +288,7 @@ class EmbedInRectangle(ImageTransform):
 
         Args:
               grid_img(:py:class:`numpy.ndarray`): Input image to be cropped.
-              shape(Tuple[int, int]): The new shape.
+              shape(tuple[int, int]): The new shape.
 
         Returns:
             :py:class:`numpy.ndarray`: The cropped image.

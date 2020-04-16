@@ -1,9 +1,6 @@
 simulation.render.layers package
 ================================
 
-Submodules
-----------
-
 simulation.render.layers.base\_layers module
 --------------------------------------------
 
@@ -20,9 +17,6 @@ simulation.render.layers.sudoku\_layer module
    :undoc-members:
    :show-inheritance:
 
-
-Module contents
----------------
 
 .. automodule:: simulation.render.layers
    :members:

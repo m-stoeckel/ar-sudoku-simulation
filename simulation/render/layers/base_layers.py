@@ -16,7 +16,7 @@ class Layer(metaclass=ABCMeta):
     def __init__(self, shape: Tuple[int, int], backside=False):
         """
         Args:
-            shape(Tuple[int, int]): The layers shape.
+            shape(tuple[int, int]): The layers shape.
             backside(bool): If True, the layers elements are on the *backside* of the substrate plane.
                 (Default value = False)
 
@@ -120,7 +120,7 @@ class SubstrateLayer(Layer):
     ):
         """
         Args:
-            shape(Tuple[int, int], optional): The layers shape. Can be inferred from the background texture, if given.
+            shape(tuple[int, int], optional): The layers shape. Can be inferred from the background texture, if given.
             background_color(Union[Tuple[int, int, int], np.ndarray], optional): The background color. Can either be
                 RGBA colors as a quadruple of ints or a 4-dimensional array.
             background_texture(Union[np.ndarray, str], optional): Either a texture as array or

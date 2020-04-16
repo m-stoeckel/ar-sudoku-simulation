@@ -786,6 +786,9 @@ class ConcatDataset(CharacterDataset):
         self.train_indices_by_number = {i: np.flatnonzero(self.train_y == i) for i in range(0, 20)}
         self.test_indices_by_number = {i: np.flatnonzero(self.test_y == i) for i in range(0, 20)}
 
+    def _load(self):
+        pass
+
 
 class EmptyDataset(CharacterDataset):
     """A dataset of empty (black/zero-valued) images."""

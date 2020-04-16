@@ -13,6 +13,18 @@ class SudokuPermutation(metaclass=ABCMeta):
 
     @abstractmethod
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
+        """
+
+        Args:
+            sudoku(:py:class:`simulation.sudoku.sudoku_generator.Sudoku`): The sudoku to be permuted.
+
+        Returns:
+            list[:py:class:`simulation.sudoku.sudoku_generator.Sudoku`]: A list of permuted Sudokus.
+
+        Raises:
+            ValueError: If the permuted Sudoku is invalid.
+
+        """
         pass
 
 
@@ -22,14 +34,6 @@ class Rotation(SudokuPermutation):
     """
 
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
-        """
-
-        Args:
-            sudoku: The sudoku to be rotated.
-
-        Returns:
-            The sudoku in all three possible rotations.
-        """
         ret: List[Sudoku] = [np.rot90(sudoku.data)]
         for i in range(2):
             sudoku_from_array = Sudoku.from_array(np.rot90(ret[i].data))
@@ -46,15 +50,6 @@ class Flip(SudokuPermutation):
     """
 
     def apply(self, sudoku: Sudoku) -> List[Sudoku]:
-        """
-
-        Args:
-            sudoku: The Sudoku to be flipped.
-
-        Returns:
-
-
-        """
         ret: List[Sudoku] = [sudoku]
 
         for ax in [0, 1, None]:
@@ -63,7 +58,8 @@ class Flip(SudokuPermutation):
                 print(sudoku_from_array.data)
                 raise ValueError
             ret.append(sudoku_from_array)
-            return ret
+
+        return ret
 
 
 class MajorSwitch(SudokuPermutation):
@@ -75,8 +71,8 @@ class MajorSwitch(SudokuPermutation):
         """
 
         Args:
-            column_switch(Tuple[int, int, int]): Column order after switching. (Default value = (0, 1, 2))
-            row_switch(Tuple[int, int, int]): Row order after switching. (Default value = (0, 1, 2))
+            column_switch(tuple[int, int, int]): Column order after switching. (Default value = (0, 1, 2))
+            row_switch(tuple[int, int, int]): Row order after switching. (Default value = (0, 1, 2))
             column_first(bool): If True apply the column switch first. Otherwise rows are switched first.
                 (Default value = False)
         """

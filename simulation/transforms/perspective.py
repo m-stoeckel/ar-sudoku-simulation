@@ -1,4 +1,4 @@
-from typing import *
+from typing import Tuple, Iterable
 
 import cv2
 import numpy as np
@@ -40,7 +40,7 @@ class RandomPerspectiveTransform(ImageTransform):
         Compute the homographic matrix H.
 
         Args:
-            shape(Tuple[int, int]): The shape of the image to transform.
+            shape(tuple[int, int]): The shape of the image to transform.
 
         Returns:
             The 3x3 perspective transform matrix.
@@ -139,11 +139,11 @@ class LensDistortion(ImageTransform):
         
 
         Args:
-            focal_lengths(Tuple[float, float], optional): The focal lengths of the simulated lens.
+            focal_lengths(tuple[float, float], optional): The focal lengths of the simulated lens.
                 (Default = [500, 500])
             dist_coeffs(Iterable[float], optional): The distance coefficients of the simulated lens.
                 (Default value = [0, 0, 0, 0])
-            principal_point(Tuple[int, int], optional): The principal point of the camera. If None, the center of each
+            principal_point(tuple[int, int], optional): The principal point of the camera. If None, the center of each
                 image will be used.
 
         """

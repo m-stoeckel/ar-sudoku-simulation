@@ -68,6 +68,8 @@ exclude_patterns = []
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+add_module_names = False
+
 # ---sphinx-themes-----
 import sphinx_glpi_theme
 

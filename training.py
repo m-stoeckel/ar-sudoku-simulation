@@ -6,9 +6,9 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from sklearn.metrics import classification_report
 from tensorflow.keras import Model, Sequential
+from tensorflow.keras import layers
+from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import *
-from tensorflow.keras.models import load_model, save_model
 
 from generate_datasets import load_datasets, get_labels, plot_9x9_grid, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
@@ -17,13 +17,17 @@ from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerato
 def train_cnn(path="model/", to_simple_digit=False):
     """
     Train the CNN model and save it under the given path.
-
+    
     The method first loads the models using *generate_datasets.py* methods. Then the model is trained and saved and
     finally evaluated.
 
-    :param path: The directory to save the trained model to.
-    :param to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition.
-    :return: None
+    Args:
+        path: The directory to save the trained model to. (Default value = "model/")
+        to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition. (Default value = False)
+
+    Returns:
+        None
+
     """
     os.makedirs(path, exist_ok=True)
 
@@ -71,24 +75,24 @@ def train_cnn(path="model/", to_simple_digit=False):
         # Keras Model
         print("Creating model..")
         model = Sequential()
-        model.add(InputLayer(input_shape=(28, 28, 1)))
-        model.add(Conv2D(16, (3, 3)))  # 26x26x16
-        model.add(BatchNormalization())
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))  # 13x13x16
-        model.add(Conv2D(32, (2, 2)))  # 12x12x32
-        model.add(BatchNormalization())
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))  # 6x6x32
-        model.add(Conv2D(64, (3, 3)))  # 4x4x64
-        model.add(MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
-        model.add(BatchNormalization())
-        model.add(Activation('relu'))
-        model.add(Flatten())  # 256
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(0.25))
-        model.add(Dense(128, activation='relu'))
-        model.add(Dense(train_generator.num_classes))
+        model.add(layers.InputLayer(input_shape=(28, 28, 1)))
+        model.add(layers.Conv2D(16, (3, 3)))  # 26x26x16
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 13x13x16
+        model.add(layers.Conv2D(32, (2, 2)))  # 12x12x32
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 6x6x32
+        model.add(layers.Conv2D(64, (3, 3)))  # 4x4x64
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Flatten())  # 256
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dropout(0.25))
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dense(train_generator.num_classes))
 
         # Hyperparameters
         epochs = 100
@@ -121,7 +125,7 @@ def train_cnn(path="model/", to_simple_digit=False):
         )
 
         print("Saving keras model")
-        save_model(model, path + "model.hdf5")
+        models.save_model(model, path + "model.hdf5")
 
         print("Evaluating keras model")
         print("Training dev", dict(zip(model.metrics_names, model.evaluate(dev_generator))))
@@ -134,10 +138,14 @@ def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator
     """
     Converts a Keras model to a tf.lite byte model.
 
-    :param model: The Keras model to convert.
-    :param path: The directory path for the model.
-    :param test_generator: The generator for test files.
-    :return: None
+    Args:
+        model(tensorflow.keras.Model): The Keras model to convert.
+        path(str): The directory path for the model.
+        test_generator(:py:class:`simulation.data.data_generator.BaseDataGenerator`): The generator for test files.
+
+    Returns:
+        None
+
     """
     print("Converting to TFLite model")
     converter: tf.lite.TFLiteConverter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -158,9 +166,13 @@ def evaluate_tflite_model(tflite_model_content: bytes, test_generator: BaseDataG
     """
     Evaluate a tf.lite model with the given *test_generator*.
 
-    :param tflite_model_content: The tf.lite model content, output of TFLiteConverter.convert().
-    :param test_generator: The generator for test files.
-    :return: The accuracy of the tf.lite model on the test files.
+    Args:
+        tflite_model_content(bytes): The tf.lite model content, output of TFLiteConverter.convert().
+        test_generator(:py:class:`simulation.data.data_generator.BaseDataGenerator`): The generator for test files.
+
+    Returns:
+        The accuracy of the tf.lite model on the test files.
+
     """
     test_images = test_generator.get_data()
     test_labels = test_generator.get_labels()
@@ -205,10 +217,14 @@ def evaluate(
     """
     Evaluate a given model with the given generator.
 
-    :param model: The Keras model to evaluate.
-    :param test_generator: The generator for test files.
-    :param binary:
-    :return: A
+    Args:
+        model(tensorflow.keras.Model): The Keras model to evaluate.
+        test_generator(:py:class:`simulation.data.data_generator.BaseDataGenerator`): The generator for test files.
+        binary(bool): If True, the given model is a binary recognition model. (Default value = False)
+
+    Returns:
+        tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]: The
+
     """
     x = test_generator.get_data()
     y_true = test_generator.get_labels()
@@ -227,10 +243,16 @@ def evaluate_and_plot(model: Model, test_generator: BaseDataGenerator, binary=Fa
     """
     Evaluate a given model and plot the results on the test_generator to a set of files.
 
-    :param model: The model to evaluate.
-    :param test_generator: The generator for test files.
-    :param binary: If True, the given model is a binary recognition model.
-    :return: None
+    Args:
+        model: The model to evaluate.
+        test_generator: The generator for test files.
+        binary: If True, the given model is a binary recognition model. (Default value = False)
+        model: Model:
+        test_generator: BaseDataGenerator:
+
+    Returns:
+      None
+
     """
     x, y_true, y_pred = evaluate(model, test_generator, binary)
     y = get_labels(y_true, y_pred)
@@ -243,10 +265,13 @@ def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"
     """
     Load and evaluate a model at the given file path.
 
-    :param filepath:
-    :return:
+    Args:
+      filepath: return: (Default value = "model_simple_finetuning/cnn_model.ft.final.hdf5")
+
+    Returns:
+
     """
-    model = keras.models.load_model(filepath)
+    model = models.load_model(filepath)
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
     test_generator = SimpleDataGenerator(
@@ -274,7 +299,7 @@ if __name__ == '__main__':
         shuffle=False,
         to_simple_digit=True
     )
-    model = load_model("model_simple_finetuning/model.hdf5")
+    model = models.load_model("model_simple_finetuning/model.hdf5")
     evaluate(model, test_generator)
     convert_to_tflite(model, "model_simple_finetuning/", test_generator)
 
@@ -284,6 +309,6 @@ if __name__ == '__main__':
         shuffle=False,
         to_simple_digit=False
     )
-    model = load_model("model_full_finetuning/model.hdf5")
+    model = models.load_model("model_full_finetuning/model.hdf5")
     evaluate(model, test_generator)
     convert_to_tflite(model, "model_full_finetuning/", test_generator)

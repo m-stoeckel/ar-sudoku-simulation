@@ -12,7 +12,7 @@ class BaseDataGenerator(keras.utils.Sequence, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def get_data(self):
+    def get_data(self) -> np.ndarray:
         """
         Get all data from this generator as a single array. The array contains normalized floats.
 
@@ -22,7 +22,7 @@ class BaseDataGenerator(keras.utils.Sequence, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labels(self):
+    def get_labels(self) -> np.ndarray:
         """
         Get all labels of this generator in a single array.
 
@@ -218,10 +218,10 @@ class ToBinaryGenerator(BalancedDataGenerator):
         
 
         Args:
-            datasets(Tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]): A sequence of datasets to convert to
+            datasets(tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]): A sequence of datasets to convert to
                 binary.
             class_to_match(Union[int, Iterable[int]]): The class or classes to match as binary *1* class.
-            kwargs(dict): Arbitrary :py:class:`BalancedDataGenerator` arguments.
+            kwargs: Arbitrary :py:class:`BalancedDataGenerator` arguments.
 
         """
         self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
@@ -289,7 +289,7 @@ class SimpleDataGenerator(BaseDataGenerator):
         
 
         Args:
-            datasets(Tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]): The input datasets as a sequence of
+            datasets(tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]): The input datasets as a sequence of
                 (data, label) tuples.
             batch_size(int, optional): The batch size. (Default value = 32)
             shuffle(bool, optional): If True, shuffle the datasets at the end of each epoch. (Default value = True)
