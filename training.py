@@ -4,13 +4,14 @@ from typing import Tuple
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
+from matplotlib import pyplot as plt
 from sklearn.metrics import classification_report
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras import layers
 from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 
-from generate_datasets import load_datasets, get_labels, plot_9x9_grid, TRANSFORMED_DATASET_NAMES
+from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
 
 
@@ -23,7 +24,7 @@ def train_cnn(path="model/", to_simple_digit=False):
 
     Args:
         path: The directory to save the trained model to. (Default value = "model/")
-        to_simple_digit: If true, convert the datasets to simple 9 + 2 class digit recognition. (Default value = False)
+        to_simple_digit: If true, convert the datasets to simple 9 + 1 class digit recognition. (Default value = False)
 
     Returns:
         None
@@ -125,7 +126,7 @@ def train_cnn(path="model/", to_simple_digit=False):
         )
 
         print("Saving keras model")
-        models.save_model(model, path + "model.hdf5")
+        models.save_model(model, path + "model.hdf5", include_optimizer=False)
 
         print("Evaluating keras model")
         print("Training dev", dict(zip(model.metrics_names, model.evaluate(dev_generator))))
@@ -223,7 +224,8 @@ def evaluate(
         binary(bool): If True, the given model is a binary recognition model. (Default value = False)
 
     Returns:
-        tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]: The
+        tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]: Images, true labels and
+            predicted labels as arrays.
 
     """
     x = test_generator.get_data()
@@ -244,14 +246,12 @@ def evaluate_and_plot(model: Model, test_generator: BaseDataGenerator, binary=Fa
     Evaluate a given model and plot the results on the test_generator to a set of files.
 
     Args:
-        model: The model to evaluate.
-        test_generator: The generator for test files.
-        binary: If True, the given model is a binary recognition model. (Default value = False)
-        model: Model:
-        test_generator: BaseDataGenerator:
+        model(:py:class:`Model`): The model to evaluate.
+        test_generator(:py:class:`BaseDataGenerator`): The generator for test files.
+        binary(bool): If True, the given model is a binary recognition model. (Default value = False)
 
     Returns:
-      None
+        None
 
     """
     x, y_true, y_pred = evaluate(model, test_generator, binary)
@@ -266,9 +266,10 @@ def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"
     Load and evaluate a model at the given file path.
 
     Args:
-      filepath: return: (Default value = "model_simple_finetuning/cnn_model.ft.final.hdf5")
+      filepath: The model filepath. (Default value = "model_simple_finetuning/cnn_model.ft.final.hdf5")
 
     Returns:
+        None
 
     """
     model = models.load_model(filepath)
@@ -312,3 +313,52 @@ if __name__ == '__main__':
     model = models.load_model("model_full_finetuning/model.hdf5")
     evaluate(model, test_generator)
     convert_to_tflite(model, "model_full_finetuning/", test_generator)
+
+
+def get_labels(y_true: np.ndarray, y_pred: np.ndarray):
+    """
+    Helper function that returns a list of 'pred_label/true_label' pairings as string. When the prediction was correct,
+    only a single label is crated.
+
+    Args:
+        y_true(:py:class:`numpy.ndarray`): True labels.
+        y_pred(:py:class:`numpy.ndarray`): Predicted labels.
+
+    Returns:
+        A list of 'true_label' and 'pred_label/true_label' strings.
+
+    Examples:
+        >>> get_labels(np.array([1, 1]), np.array([1, 2]))
+        ["1", "1/2"]
+
+    """
+    return [f"{y_pred[i]}" if y_pred[i] == y_true[i] else f"{y_pred[i]}/{y_true[i]}" for i in range(y_true.shape[0])]
+
+
+def plot_9x9_grid(zipped: zip, title: str):
+    """
+    Plots a 9x9 grid of images and their predicted labels. The plot is saved in the working directory as
+    ``f"{title.replace(' ', '_')}.png"``.
+
+    See Also: :py:func:`get_labels()`
+
+    Args:
+        zipped(zip): (image, label) tuples
+        title: The suptitle of the plots.
+
+    Returns:
+        None
+
+    """
+    plt.tight_layout(0.1, rect=(0, 0, 0.8, 1))
+    fig, axes = plt.subplots(9, 9, figsize=(9, 12))
+    fig.suptitle(title, y=0.995)
+    tuples = iter(zipped)
+    for i in range(9):
+        for j in range(9):
+            img, label = tuples.__next__()
+            axes[i][j].imshow(img.squeeze(), cmap="gray")
+            axes[i][j].axis('off')
+            axes[i][j].set_title(str(label))
+    plt.savefig(f"{title.replace(' ', '_')}.png")
+    plt.show()

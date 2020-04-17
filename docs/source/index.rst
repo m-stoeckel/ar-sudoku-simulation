@@ -12,7 +12,7 @@ dataset alongside the development of an Neural Network Architecture using keras_
 The documentation is made up of two parts:
 
 - The source code documentation of the :doc:`simulation`.
-- The documentation of the training scripts used to create our Digit Classifier.
+- The documentation of the training scripts used to create our :doc:`training`.
 
 
 

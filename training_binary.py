@@ -1,9 +1,9 @@
 import os
 
-
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import Sequential
+from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Flatten, Dense, Dropout
 
@@ -12,25 +12,14 @@ from simulation.data.data_generator import ToBinaryGenerator
 from training import evaluate_and_plot
 
 
-def get_cnn_binary_model():
-    model = Sequential()
-    model.add(Conv2D(16, (5, 5), strides=2,
-                     input_shape=(28, 28, 1)))  # 24x24x16
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(4, 4)))  # 6x6x16
-    model.add(Conv2D(32, (2, 2)))  # 6x62x32
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))  # 3x3x32
-    model.add(Flatten())  # 256
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.25))
-    model.add(Dense(1, activation='sigmoid'))
-    return model
-
-
 def train_binary_model():
+    """
+    Train a smaller binary model for empty/not empty classification.
+
+    Returns:
+        None
+
+    """
     os.makedirs("model_binary_finetuning", exist_ok=True)
     concat_machine, concat_hand, concat_out, real_training, real_validation = load_datasets(TRANSFORMED_DATASET_NAMES)
 
@@ -73,7 +62,20 @@ def train_binary_model():
     with tf.device('/GPU:0'):
         # Keras Model
         print("Creating model..")
-        model = get_cnn_binary_model()
+        model = Sequential()
+        model.add(Conv2D(16, (5, 5), strides=2,
+                         input_shape=(28, 28, 1)))  # 24x24x16
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(4, 4)))  # 6x6x16
+        model.add(Conv2D(32, (2, 2)))  # 6x62x32
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))  # 3x3x32
+        model.add(Flatten())  # 256
+        model.add(Dense(128, activation='relu'))
+        model.add(Dropout(0.25))
+        model.add(Dense(1, activation='sigmoid'))
 
         # Hyperparameters
         epochs = 10
@@ -95,7 +97,7 @@ def train_binary_model():
             train_generator, validation_data=dev_generator,
             epochs=epochs,
             callbacks=[
-                EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
+                EarlyStopping(monitor='val_accuracy', restore_best_weights=True, patience=3, min_delta=0.0001),
             ]
         )
 
@@ -104,11 +106,11 @@ def train_binary_model():
             ft_train_generator, validation_data=ft_train_generator,
             epochs=ft_epochs,
             callbacks=[
-                EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
+                EarlyStopping(monitor='val_accuracy', restore_best_weights=True, patience=3, min_delta=0.0001),
             ]
         )
 
-        model.save("model_binary_finetuning/model.hdf5")
+        models.save_model(model, "model_binary_finetuning/model.hdf5", include_optimizer=False)
 
         print("Evaluating")
         print("Training dev", list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))

@@ -12,7 +12,7 @@ Overview
 .. _`Handwritten Characters Database`: https://github.com/sueiras/handwritting_characters_database
 
 Using the classes and methods from the :doc:`simulation` we can construct a large dataset for digit recognition.
-The core difference to existing datasets are both the inclusion of both machine-written and hand-written digits and the
+The core difference to existing datasets are the inclusion of both machine-written and hand-written digits and the
 possibility to create noisy data with a large amount of variation. The second is necessary because the environment in
 which our project is going to be used is inherently noisy and as such requires training data which reflects this.
 
