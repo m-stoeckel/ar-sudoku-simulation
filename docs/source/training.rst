@@ -61,6 +61,7 @@ The pipelines in :doc:`training.generate_datasets.py` make use of the following 
     dataset.apply_transforms()  # -> 374244 images in train split
 
     # Transform pipeline for 'out' data
+    dataset = out_dataset
     dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
     dataset.add_transforms(EmbedInGrid(), GrainNoise())
     dataset.add_transforms(EmbedInRectangle())
@@ -100,6 +101,102 @@ Digit Classifier Architecture
 Overview
 ^^^^^^^^
 
+We chose a *Convolutional Neural Net* architecture for our digit classifier.
+
+Simple 10 class model: ::
+
+           OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
+
+               Input   #####     28   28    1
+              Conv2D    \|/  -------------------       160     0.2%
+                       #####     26   26   16
+  BatchNormalization    μ|σ  -------------------        64     0.1%
+                relu   #####     26   26   16
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####     13   13   16
+              Conv2D    \|/  -------------------      2080     2.9%
+                       #####     12   12   32
+  BatchNormalization    μ|σ  -------------------       128     0.2%
+                relu   #####     12   12   32
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      6    6   32
+              Conv2D    \|/  -------------------     18496    25.7%
+                       #####      4    4   64
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      2    2   64
+  BatchNormalization    μ|σ  -------------------       256     0.4%
+                relu   #####      2    2   64
+             Flatten   ||||| -------------------         0     0.0%
+                       #####         256
+               Dense   XXXXX -------------------     32896    45.8%
+                relu   #####         128
+             Dropout    | || -------------------         0     0.0%
+                       #####         128
+               Dense   XXXXX -------------------     16512    23.0%
+                relu   #####         128
+               Dense   XXXXX -------------------      1290     1.8%
+                       #####          10
+
+Full 20 class model: ::
+
+           OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
+
+               Input   #####     28   28    1
+              Conv2D    \|/  -------------------       160     0.2%
+                       #####     26   26   16
+  BatchNormalization    μ|σ  -------------------        64     0.1%
+                relu   #####     26   26   16
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####     13   13   16
+              Conv2D    \|/  -------------------      2080     2.8%
+                       #####     12   12   32
+  BatchNormalization    μ|σ  -------------------       128     0.2%
+                relu   #####     12   12   32
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      6    6   32
+              Conv2D    \|/  -------------------     18496    25.3%
+                       #####      4    4   64
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      2    2   64
+  BatchNormalization    μ|σ  -------------------       256     0.3%
+                relu   #####      2    2   64
+             Flatten   ||||| -------------------         0     0.0%
+                       #####         256
+               Dense   XXXXX -------------------     32896    45.0%
+                relu   #####         128
+             Dropout    | || -------------------         0     0.0%
+                       #####         128
+               Dense   XXXXX -------------------     16512    22.6%
+                relu   #####         128
+               Dense   XXXXX -------------------      2580     3.5%
+                       #####          20
+
+
+Binary classification model: ::
+
+           OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
+
+               Input   #####     28   28    1
+              Conv2D    \|/  -------------------       416     5.9%
+                       #####     12   12   16
+  BatchNormalization    μ|σ  -------------------        64     0.9%
+                relu   #####     12   12   16
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      3    3   16
+              Conv2D    \|/  -------------------      2080    29.5%
+                       #####      2    2   32
+  BatchNormalization    μ|σ  -------------------       128     1.8%
+                relu   #####      2    2   32
+        MaxPooling2D   Y max -------------------         0     0.0%
+                       #####      1    1   32
+             Flatten   ||||| -------------------         0     0.0%
+                       #####          32
+               Dense   XXXXX -------------------      4224    60.0%
+                relu   #####         128
+             Dropout    | || -------------------         0     0.0%
+                       #####         128
+               Dense   XXXXX -------------------       129     1.8%
+             sigmoid   #####           1
 
 
 Scripts
