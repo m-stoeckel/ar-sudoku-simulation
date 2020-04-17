@@ -62,7 +62,7 @@ class TestPaperRenderer(TestCase):
 
         renderer = LayeredPaperRenderer(substrate)
 
-        digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", resolution=res)
+        digits = CuratedCharactersDataset(digits_path="datasets/curated/", resolution=res)
         digits.invert()
         digits.cvt_color(cv2.COLOR_GRAY2BGRA)
 

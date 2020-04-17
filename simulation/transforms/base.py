@@ -15,7 +15,7 @@ class ImageTransform(metaclass=ABCMeta):
             img(:py:class:`numpy.ndarray`): The input image, as a numpy array.
 
         Returns:
-            :py:class:`numpy.ndarray`: A new :py:class:`numpy.ndarray` containing the transformed image.
+            :py:class:`numpy.ndarray`: A new array containing the transformed image.
 
         """
         pass

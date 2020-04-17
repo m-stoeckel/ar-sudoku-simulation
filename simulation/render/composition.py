@@ -28,11 +28,17 @@ class Add(DigitalCompositionMethod):
 
 class Subtract(DigitalCompositionMethod):
     """
-    Subtracts two images. Resulting values are computed as full integer and clipped to uint8 afterwards.
+    Subtracts two images. The overlay image is converted to a RGB float array by multiplying each color channel with the
+    normalized alpha channel. The alpha of the background image remains unchanged. Resulting values are clipped to uint8
+    afterwards.
     """
 
     def apply(self, background_rgba: np.ndarray, overlay_rgba: np.ndarray) -> np.ndarray:
-        return np.clip(background_rgba.astype(np.int) - overlay_rgba.astype(np.int), 0, 255).astype(np.uint8)
+        bg = background_rgba.astype(np.float)
+        fg = overlay_rgba.astype(np.float)
+        norm_alpha = np.expand_dims(fg[:, :, 3] / 255., axis=2).repeat(3, axis=2)
+        bg[:, :, :3] -= fg[:, :, :3] * norm_alpha
+        return np.clip(bg, 0, 255).astype(np.uint8)
 
 
 class Average(DigitalCompositionMethod):

@@ -12,11 +12,10 @@ from simulation.render.layers import DigitalCompositionLayer
 DEBUG = True
 
 
-@deprecated(version="1.0.0", reason="""
-The development of full Sudoku simulations was suspended after it became clear that the recognition of the Sudoku grid 
-it self would not make use of machine learning, but rather be focused on foundational computer vision methods. Thus, 
-more time was used to develop more sophisticated methods for the creation of a dataset for digit recognition.
-""")
+@deprecated(version="1.0.0", reason="""The development of full Sudoku simulations was suspended after it became clear 
+that the recognition of the Sudoku grid it self would not make use of machine learning, but rather be focused on 
+foundational computer vision methods. Thus, more time was used to develop more sophisticated methods for the creation 
+of a dataset for digit recognition.""")
 class SudokuLayer(DigitalCompositionLayer):
     def __init__(self, shape: tuple, **kwargs):
         super().__init__(shape, **kwargs)

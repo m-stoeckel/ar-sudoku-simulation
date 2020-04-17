@@ -3,7 +3,6 @@ import os
 import sys
 import tarfile
 import zipfile
-from abc import abstractmethod, ABCMeta
 from pathlib import Path
 from typing import Dict, List, Union, Tuple, Optional
 
@@ -66,9 +65,9 @@ def char_is_valid_number(char: Union[int, str]):
     return char in [ord(c) for c in '123456789']
 
 
-class CharacterDataset(metaclass=ABCMeta):
+class CharacterDataset:
     """
-    An abstract base class for character datasets. It implements various functions **except** the
+    A base class for character datasets. It implements various functions **except** the
     :py:meth:`_load()` method, which is implemented in its subclasses:
     
     .. hlist::
@@ -112,7 +111,6 @@ class CharacterDataset(metaclass=ABCMeta):
 
         self._load()
 
-    @abstractmethod
     def _load(self):
         """
         Called at the end of the this classes constructor call. Implement this method to load all necessary data.
@@ -383,15 +381,14 @@ class CharacterDataset(metaclass=ABCMeta):
         Induce the alpha for the images in this dataset. The images must be in RGBA format for this to work.
 
         Args:
-            average_color(Optional[Tuple[int]]): If True, set alpha value to the average of all color channels for each pixel (default).
-            alpha_zero_value(Optional[int]): If given, set the alpha value to zero for this value and to 255 for all others.
-            max_of_channel(Union[Tuple[int], List[int], None]): If given, set the alpha value to the maximum value of the given color channels.
-            invert(bool, optional): If True, invert the alpha values. Default: True.
+            average_color(Optional[Tuple[int]]): Set alpha value to the average of all given color channels for each
+                pixel. (Default value if all None = (0, 1, 2))
+            alpha_zero_value(Optional[int]): If given, set the alpha value to zero for this value and to 255 for all
+                others. (Default value = None)
+            max_of_channel(Union[Tuple[int], List[int], None]): If given, set the alpha value to the maximum value of
+                the given color channels. (Default value = None)
+            invert(bool, optional): If True, invert the alpha values. (Default value = True)
             average_color: Optional[Tuple[int]]:  (Default value = None)
-            alpha_zero_value: int:  (Default value = None)
-            max_of_channel: Union[Tuple[int]:
-            List[int]:
-            None]:  (Default value = None)
 
         Returns:
             None
@@ -415,15 +412,13 @@ class CharacterDataset(metaclass=ABCMeta):
 
         Args:
             data(:py:class:`numpy.ndarray`): An array of images to induce the alpha values for.
-            average_color(Optional[Tuple[int]], optional): If True, set alpha value to the average of all color channels
-                for each pixel (default).
+            average_color(Optional[Tuple[int]]): Set alpha value to the average of all given color channels for each
+                pixel. (Default value if all None = (0, 1, 2))
             alpha_zero_value(Optional[int]): If given, set the alpha value to zero for this value and to 255 for all
-                others.
+                others. (Default value = None)
             max_of_channel(Union[Tuple[int], List[int], None]): If given, set the alpha value to the maximum value of
-                the given color channels.
+                the given color channels. (Default value = None)
             invert(bool, optional): If True, invert the alpha values. Default: True.
-            alpha_zero_value: int:  (Default value = None)
-            max_of_channel: Tuple[int]:  (Default value = None)
 
         Returns:
             :py:class:`numpy.ndarray`: The images with new alpha values.
@@ -518,8 +513,9 @@ class CharacterDataset(metaclass=ABCMeta):
 
 class MNIST(CharacterDataset):
     """
-    A :py:class:`CharacterDataset <simulation.data.dataset.CharacterDataset>` implementation for the MNIST dataset. Downloads the images with sklearn (if
-    necessary) and saves them in a directory under :py:data:`DATASETS_HOME <simulation.data.dataset.DATASETS_HOME>`.
+    A :py:class:`CharacterDataset <simulation.data.dataset.CharacterDataset>` implementation for the MNIST dataset.
+    Downloads the images with sklearn (if necessary) and saves them in a directory under
+    :py:data:`DATASETS_HOME <simulation.data.dataset.DATASETS_HOME>`.
 
     """
 
@@ -785,9 +781,6 @@ class ConcatDataset(CharacterDataset):
 
         self.train_indices_by_number = {i: np.flatnonzero(self.train_y == i) for i in range(0, 20)}
         self.test_indices_by_number = {i: np.flatnonzero(self.test_y == i) for i in range(0, 20)}
-
-    def _load(self):
-        pass
 
 
 class EmptyDataset(CharacterDataset):

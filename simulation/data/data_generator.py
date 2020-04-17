@@ -88,6 +88,7 @@ class BalancedDataGenerator(BaseDataGenerator):
             s_data_align = "truncating larger" if self.truncate else "repeating smaller"
             print(f"Dataset sizes are different, {s_data_align} datasets.")
 
+        self.indices: List[np.ndarray] = []
         self.on_epoch_end()
 
     @property
@@ -331,6 +332,7 @@ class SimpleDataGenerator(BaseDataGenerator):
         else:
             self.num_classes = 20
 
+        self.indices: np.ndarray = np.empty(0, dtype=np.int64)
         self.on_epoch_end()
 
     def __len__(self):

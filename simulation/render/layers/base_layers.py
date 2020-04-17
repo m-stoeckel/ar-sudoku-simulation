@@ -97,8 +97,7 @@ class DigitalCompositionLayer(Layer):
 
 class DrawingLayer(DigitalCompositionLayer):
     """
-    Layer that uses
-    :py:class:`GammaCorrectedAlphaComposition <simulation.render.composition.GammaCorrectedAlphaComposition>` by default.
+    Layer that uses :py:class:`GammaCorrectedAlphaComposition` by default.
     """
 
     def __init__(self, *args, composite=GammaCorrectedAlphaComposition(), **kwargs):
@@ -124,8 +123,8 @@ class SubstrateLayer(Layer):
             background_color(Union[Tuple[int, int, int], np.ndarray], optional): The background color. Can either be
                 RGBA colors as a quadruple of ints or a 4-dimensional array.
             background_texture(Union[np.ndarray, str], optional): Either a texture as array or
-            override_opacity(Union[int, float], optional): If set, override the alpha value of the background image. Can either be
-                an int [0, 255] or a normalized float value [0.0, 1.0].
+            override_opacity(Union[int, float], optional): If set, override the alpha value of the background image.
+                Can either be an int [0, 255] or a normalized float value [0.0, 1.0].
 
         """
         if background_texture is not None:

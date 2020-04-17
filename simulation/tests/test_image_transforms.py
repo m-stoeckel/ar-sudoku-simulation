@@ -1,3 +1,4 @@
+import os
 from unittest import TestCase
 
 import cv2
@@ -9,9 +10,9 @@ from simulation.transforms import *
 
 class ImageTransformTests(TestCase):
     def setUp(self):
-        self.digit1 = cv2.imread("../../datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
+        self.digit1 = cv2.imread("datasets/digits/1.png", cv2.IMREAD_GRAYSCALE)
         self.digit1 = cv2.resize(self.digit1, (28, 28))
-        self.digit2 = cv2.imread("../../datasets/curated/50/15.png", cv2.IMREAD_GRAYSCALE)
+        self.digit2 = cv2.imread("datasets/curated/50/15.png", cv2.IMREAD_GRAYSCALE)
         self.digit2 = cv2.resize(self.digit2, (28, 28))
 
     def apply_transform(self, transform):
@@ -26,7 +27,7 @@ class ImageTransformTests(TestCase):
             plt.show()
 
     def test_with_sudoku(self):
-        img = cv2.imread("../../sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread("sudoku.jpeg", cv2.IMREAD_GRAYSCALE)
         img = GaussianNoise().apply(img)
         img = RandomPerspectiveTransform(0.2).apply(img)
         img = GaussianBlur().apply(img)

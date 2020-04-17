@@ -6,11 +6,11 @@ from simulation.sudoku import SudokuGenerator
 
 if __name__ == '__main__':
     img, coords = SudokuGenerator.get_sudoku_grid(cell_size=10)
-    l = []
+    lst = []
     for i in range(len(coords)):
         for j in range(len(coords)):
-            l.append([coords[i] - 1, coords[j] - 1])
-    coords = np.array(l).T
+            lst.append([coords[i] - 1, coords[j] - 1])
+    coords = np.array(lst).T
 
     mask = np.full(img.shape, False, dtype=np.bool)
     mask[coords[0], coords[1]] = True

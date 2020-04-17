@@ -106,8 +106,8 @@ class CharacterRenderer:
 class SingleFontCharacterRenderer(CharacterRenderer):
     """
     A CharacterRenderer that renders characters in a single font and saves them in a list. By default all characters in
-    :py:attr:`char_list` are rendered upon construction. Other characters are rendered in a just-in-time manor, but saved for
-    later.
+    :py:attr:`char_list` are rendered upon construction. Other characters are rendered in a just-in-time manor, but
+    saved for later.
 
     """
 

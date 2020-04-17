@@ -12,6 +12,7 @@
 #
 import os
 import sys
+import sphinx_glpi_theme
 
 sys.path.insert(0, os.path.abspath('../..'))
 
@@ -71,7 +72,6 @@ html_static_path = ['_static']
 add_module_names = False
 
 # ---sphinx-themes-----
-import sphinx_glpi_theme
 
 html_theme = "glpi"
 

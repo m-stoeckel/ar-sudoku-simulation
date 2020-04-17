@@ -10,7 +10,7 @@ from tqdm import tqdm
 from simulation import PrerenderedDigitDataset, PrerenderedCharactersDataset, ConcatDataset, \
     ClassSeparateCuratedCharactersDataset, ClassSeparateMNIST, EmptyDataset, RealDataset, RealValidationDataset, \
     CharacterDataset, RandomPerspectiveTransform, RescaleIntermediateTransforms, JPEGEncode, \
-    SaltAndPepperNoise, Dilate, EmbedInRectangle, EmbedInGrid, GrainNoise, PoissonNoise, CharacterRenderer
+    SaltAndPepperNoise, Dilate, EmbedInRectangle, EmbedInGrid, GrainNoise, PoissonNoise
 
 BASE_DATASET_NAMES = ["base_machine_dataset", "base_hand_dataset", "base_out_dataset",
                       "base_real_dataset", "validation_real_dataset"]
@@ -124,18 +124,18 @@ def generate_transformed_datasets():
         for dataset in [concat_machine]:
             dataset.add_transforms(EmbedInRectangle())
             dataset.add_transforms(EmbedInGrid())
-            dataset.apply_transforms(keep=False)  # -> 20086 images
+            dataset.apply_transforms(keep=False)  # -> 20086 images in train split
 
             dataset.add_transforms(upscale_and_salt)
             dataset.add_transforms(GrainNoise())
-            dataset.apply_transforms()  # -> 60258 images
+            dataset.apply_transforms()  # -> 60258 images in train split
 
             dataset.add_transforms(perspective_transform)
             dataset.add_transforms(perspective_transform, JPEGEncode())
             dataset.add_transforms(downscale_intermediate_transforms)
             dataset.add_transforms(PoissonNoise(), JPEGEncode())
             dataset.add_transforms(JPEGEncode())
-            dataset.apply_transforms()  # -> 361548 images
+            dataset.apply_transforms()  # -> 361548 images in train split
 
         save_datsets([(concat_machine, "train_machine_dataset")])
         print(f"Created {concat_machine.test_y.size}/{concat_machine.train_y.size} machine images")
@@ -146,11 +146,11 @@ def generate_transformed_datasets():
         for dataset in [concat_hand]:
             dataset.add_transforms(EmbedInRectangle())
             dataset.add_transforms(EmbedInGrid())
-            dataset.apply_transforms(keep=False)  # -> 124748 images
+            dataset.apply_transforms(keep=False)  # -> 124748 images in train split
 
             dataset.add_transforms(upscale_and_salt, perspective_transform, JPEGEncode())
             dataset.add_transforms(GrainNoise(), perspective_transform)
-            dataset.apply_transforms()  # -> 374244 images
+            dataset.apply_transforms()  # -> 374244 images in train split
 
         save_datsets([(concat_hand, "train_hand_dataset")])
         print(f"Created {concat_hand.test_y.size}/{concat_hand.train_y.size} handwritten images")
@@ -161,12 +161,12 @@ def generate_transformed_datasets():
             dataset.add_transforms(EmbedInGrid(), upscale_and_salt)
             dataset.add_transforms(EmbedInGrid(), GrainNoise())
             dataset.add_transforms(EmbedInRectangle())
-            dataset.apply_transforms(keep=False)  # -> 13500
+            dataset.apply_transforms(keep=False)  # -> 32400 images in train split
 
             dataset.add_transforms(downscale_intermediate_transforms)
             dataset.add_transforms(perspective_transform, JPEGEncode())
             dataset.add_transforms(JPEGEncode())
-            dataset.apply_transforms(keep=False)  # -> 40500 images
+            dataset.apply_transforms(keep=False)  # -> 97200 images in train split
 
         save_datsets([(concat_out, "train_out_dataset")])
         print(f"Created {concat_out.test_y.size}/{concat_out.train_y.size} out images")
@@ -206,15 +206,15 @@ def save_datsets(datasets: Iterable[Tuple[CharacterDataset, str]]):
 
 
 def create_data_overview(samples=20):
-    concat_machine, concat_hand, concat_out, train, _ = load_datasets(TRANSFORMED_DATASET_NAMES)
+    concat_machine, concat_hand, concat_out, real = load_datasets(TRANSFORMED_DATASET_NAMES[:3] + ["base_real_dataset"])
 
     dataset = ConcatDataset(concat_machine, concat_hand, concat_out, delete=False)
-    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_samples.png")
-    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_samples.png")
+    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "docs/source/_static/train_samples.png")
+    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "docs/source/_static/test_samples.png")
 
-    dataset = ConcatDataset(train, delete=False)
-    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "train_real.png")
-    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "test_real.png")
+    dataset = ConcatDataset(real, delete=False)
+    render_overview(dataset.train_x, dataset.train_indices_by_number, samples, "docs/source/_static/train_real.png")
+    render_overview(dataset.test_x, dataset.test_indices_by_number, samples, "docs/source/_static/test_real.png")
 
 
 def render_overview(data, indices_by_number, samples, filename):
@@ -259,7 +259,7 @@ def plot_9x9_grid(zipped, title: str):
 
 
 if __name__ == '__main__':
-    CharacterRenderer().prerender_all(mode='L')
-    generate_base_datasets()
-    generate_transformed_datasets()
+    # CharacterRenderer().prerender_all(mode='L')
+    # generate_base_datasets()
+    # generate_transformed_datasets()
     create_data_overview()

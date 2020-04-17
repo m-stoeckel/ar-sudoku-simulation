@@ -14,36 +14,36 @@ class Test(TestCase):
         non_digit_characters = "0abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.!?"
 
         # Digit dataset
-        digit_dataset = PrerenderedDigitDataset(digits_path="../../datasets/digits/")
+        digit_dataset = PrerenderedDigitDataset(digits_path="datasets/digits/")
         digit_dataset.resize(28)
 
         # Prerendered character dataset - digits
         prerendered_digit_dataset = PrerenderedCharactersDataset(
-            digits_path="../../datasets/characters/",
+            digits_path="datasets/characters/",
             load_chars=digit_characters
         )
         prerendered_digit_dataset.resize(28)
 
         # Prerendered character dataset - non-digits
         prerendered_nondigit_dataset = PrerenderedCharactersDataset(
-            digits_path="../../datasets/characters/",
+            digits_path="datasets/characters/",
             load_chars=non_digit_characters
         )
         prerendered_nondigit_dataset.resize(28)
 
         # Handwritten non-digits
         curated_out = CuratedCharactersDataset(
-            digits_path="../../datasets/curated/",
+            digits_path="datasets/curated/",
             load_chars=non_digit_characters
         )
         curated_out.resize(28)
 
         # Handwritten digits
-        curated_digits = CuratedCharactersDataset(digits_path="../../datasets/curated/", load_chars=digit_characters)
+        curated_digits = CuratedCharactersDataset(digits_path="datasets/curated/", load_chars=digit_characters)
         curated_digits.resize(28)
 
         # Mnist digits
-        mnist = ClassSeparateMNIST(data_home="../../datasets/")
+        mnist = ClassSeparateMNIST(data_home="datasets/")
 
         # Empty dataset
         empty_dataset = EmptyDataset(28, 1000)
@@ -61,8 +61,8 @@ class Test(TestCase):
         )
         img_l = []
         for i in range(batch_size):
-            X, y = d[i]
-            img_l.append(np.hstack([img for img in X.squeeze()]))
+            x, y = d[i]
+            img_l.append(np.hstack([img for img in x.squeeze()]))
         plt.figure(figsize=(4, 4))
         plt.imshow(np.vstack(img_l), cmap="gray")
         plt.axis('off')
