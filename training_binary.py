@@ -78,16 +78,15 @@ def train_binary_model():
         # Hyperparameters
         epochs = 10
         ft_epochs = 10
-        learning_rate = 0.001
 
-        def mean_pred(_, y):
-            return keras.backend.mean(y)
+        # def mean_pred(_, y):
+        #     return keras.backend.mean(y)
 
         print("Compiling model..")
         model.compile(
             loss=keras.losses.binary_crossentropy,
-            optimizer=keras.optimizers.Adagrad(lr=learning_rate),
-            metrics=[keras.metrics.binary_accuracy, 'mse', mean_pred],
+            optimizer=keras.optimizers.Adadelta(0.01),
+            metrics=[keras.metrics.binary_accuracy, 'mse'],
         )
         print(model.summary())
 
@@ -95,8 +94,6 @@ def train_binary_model():
         model.fit_generator(
             train_generator, validation_data=dev_generator,
             epochs=epochs,
-            use_multiprocessing=True,
-            workers=8,
             callbacks=[
                 EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
             ]
@@ -106,14 +103,12 @@ def train_binary_model():
         model.fit_generator(
             ft_train_generator, validation_data=ft_train_generator,
             epochs=ft_epochs,
-            use_multiprocessing=True,
-            workers=8,
             callbacks=[
                 EarlyStopping(monitor='val_binary_accuracy', restore_best_weights=True),
             ]
         )
 
-        model.save("model_binary_finetuning/binary_model.ft.final.hdf5")
+        model.save("model_binary_finetuning/model.hdf5")
 
         print("Evaluating")
         print("Training dev", list(zip(model.metrics_names, model.evaluate_generator(dev_generator))))
@@ -123,9 +118,4 @@ def train_binary_model():
 
 
 if __name__ == '__main__':
-    # CharacterRenderer().prerender_all(mode='L')
-    # generate_base_datasets()
-    # generate_transformed_datasets()
-    # create_data_overview()
     train_binary_model()
-    # load_and_evaluate()
