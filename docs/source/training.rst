@@ -1,5 +1,5 @@
-Training Scripts
-================
+Digit Recognition Architecture
+==============================
 
 Datasets
 --------
@@ -95,15 +95,15 @@ non-numeric characters.
    Figure 2: Test Samples (real)
 
 
-Digit Classifier Architecture
------------------------------
+Model Architecture
+------------------
 
 Overview
 ^^^^^^^^
 
 We chose a *Convolutional Neural Net* architecture for our digit classifier.
 
-Simple 10 class model: ::
+Simple 10 class model with 71,822 weights: ::
 
            OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
 
@@ -137,7 +137,7 @@ Simple 10 class model: ::
                Dense   XXXXX -------------------      1290     1.8%
                        #####          10
 
-Full 20 class model: ::
+Full 20 class model with 73,172 weights: ::
 
            OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
 
@@ -172,7 +172,7 @@ Full 20 class model: ::
                        #####          20
 
 
-Binary classification model: ::
+Binary classification model with 7,041 weights: ::
 
            OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
 
