@@ -102,8 +102,30 @@ Overview
 ^^^^^^^^
 
 We chose a *Convolutional Neural Net* architecture for our digit classifier.
+All models use 2D convolutional and max pooling layers and a final MLP, with two layers for the regular models and a
+single layer for the binary model.
+We apply batch normalization to the convolutional layers and dropout to the dense layers to prevent overfitting.
 
-Simple 10 class model with 71,822 weights: ::
+We use ``Adadelta`` with a learning rate of 0.01 for all models.
+The training is done in two steps, first with our synthetic data and then with the real dataset only for finetuning
+purposes.
+The real data is expanded by some light transforms to compensate for its small size.
+After some experiments we decided to drop class ``10`` (the 'out' class, containing non-numeric symbols) from the
+training, as it failed to increase model performance or stability.
+
+Each of the three models is described in detail in the following.
+
+Model Details
+^^^^^^^^^^^^^
+
+The 'simple' and 'full' model are used for digit recognition, whereas the binary model is used to classify empty fields.
+This is done for performance reasons, as the binary classification model has only a tenth as many weights as the other
+models.
+
+Simple Model
+""""""""""""
+
+A 10 class model with 71,822 weights: ::
 
            OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
 
@@ -137,7 +159,10 @@ Simple 10 class model with 71,822 weights: ::
                Dense   XXXXX -------------------      1290     1.8%
                        #####          10
 
-Full 20 class model with 73,172 weights: ::
+Full Model
+""""""""""
+
+A 20 class model with 73,172 weights: ::
 
            OPERATION           DATA DIMENSIONS   WEIGHTS(N)   WEIGHTS(%)
 
@@ -171,6 +196,8 @@ Full 20 class model with 73,172 weights: ::
                Dense   XXXXX -------------------      2580     3.5%
                        #####          20
 
+Binary Model
+""""""""""""
 
 Binary classification model with 7,041 weights: ::
 
@@ -197,6 +224,24 @@ Binary classification model with 7,041 weights: ::
                        #####         128
                Dense   XXXXX -------------------       129     1.8%
              sigmoid   #####           1
+
+Results
+^^^^^^^
+
+All models and the final datasets used are available for download here_.
+
+ .. _here: https://drive.google.com/drive/folders/1m2GeaFim30AFzg-xqqt1QUNSdW8ZQn4v?usp=sharing
+
+.. table:: Model performances on real test data:
+    :widths: auto
+
+    ====== ========
+    Model  F1-Score
+    ====== ========
+    Simple      99%
+    Full        98%
+    Binary     100%
+    ====== ========
 
 
 Scripts
