@@ -33,6 +33,7 @@ Expansion
 The 4 base datasets are expanded by use of the various transform and noise methods described in
 :doc:`simulation.transforms` to a total of 832,896 to 110,658 images in the training and development split respectively.
 The pipelines in :doc:`training.generate_datasets.py` make use of the following transforms: ::
+
     # Transform pipeline for machine-written data
     dataset = machine_written_dataset
     dataset.add_transforms(EmbedInRectangle())
