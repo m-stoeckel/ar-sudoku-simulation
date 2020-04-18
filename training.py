@@ -86,9 +86,9 @@ def train_cnn(path="model/", to_simple_digit=False):
         model.add(layers.Activation('relu'))
         model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 6x6x32
         model.add(layers.Conv2D(64, (3, 3)))  # 4x4x64
-        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
         model.add(layers.BatchNormalization())
         model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
         model.add(layers.Flatten())  # 256
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dropout(0.25))
