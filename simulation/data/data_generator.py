@@ -212,7 +212,8 @@ class ToBinaryGenerator(BalancedDataGenerator):
     def __init__(
             self,
             *datasets: Tuple[np.ndarray, np.ndarray],
-            class_to_match: Union[int, Iterable[int]] = 0,
+            classes_to_match: Union[int, Iterable[int]] = 0,
+            classes_to_drop: Union[int, Iterable[int]] = None,
             **kwargs
     ):
         """
@@ -221,21 +222,24 @@ class ToBinaryGenerator(BalancedDataGenerator):
         Args:
             datasets(tuple[:py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`]): A sequence of datasets to convert to
                 binary.
-            class_to_match(Union[int, Iterable[int]]): The class or classes to match as binary *1* class.
+            classes_to_match(Union[int, Iterable[int]]): The class or classes to match as binary class 1.
+                (Default value = 0)
+            classes_to_drop(Union[int, Iterable[int]]): The classes to drop from the dataset. (Default value = None)
             kwargs: Arbitrary :py:class:`BalancedDataGenerator` arguments.
 
         """
         self.data = np.vstack(tuple([dataset[0] for dataset in datasets]))
         self.all_labels = np.hstack(tuple([dataset[1] for dataset in datasets]))
 
+        # Remove instances of classes to drop
+        if classes_to_drop is not None:
+            keep_indices = np.logical_not(self.get_matching_indices(classes_to_drop))
+
+            self.data = self.data[keep_indices]
+            self.all_labels = self.all_labels[keep_indices]
+
         # Split all datasets into matching and other data
-        if isinstance(class_to_match, int):
-            matched_indices = self.all_labels == class_to_match
-        else:
-            iterator = iter(class_to_match)
-            matched_indices = self.all_labels == iterator.__next__()
-            for cls in iterator:
-                matched_indices = np.logical_or(matched_indices, self.all_labels == cls)
+        matched_indices = self.get_matching_indices(classes_to_match)
         other_indices = np.logical_not(matched_indices)
 
         # Assign new binary labels
@@ -245,6 +249,16 @@ class ToBinaryGenerator(BalancedDataGenerator):
         matched_data = (self.data[matched_indices], self.all_labels[matched_indices])
         other_data = (self.data[other_indices], self.all_labels[other_indices])
         super().__init__(matched_data, other_data, num_classes=1, **kwargs)
+
+    def get_matching_indices(self, classes_to_match):
+        if isinstance(classes_to_match, int):
+            matched_indices = self.all_labels == classes_to_match
+        else:
+            iterator = iter(classes_to_match)
+            matched_indices = self.all_labels == iterator.__next__()
+            for cls in iterator:
+                matched_indices = np.logical_or(matched_indices, self.all_labels == cls)
+        return matched_indices
 
     def _data_generation(self, indices):
         xs, ys = [], []

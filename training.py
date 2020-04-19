@@ -15,16 +15,22 @@ from generate_datasets import load_datasets, TRANSFORMED_DATASET_NAMES
 from simulation.data.data_generator import SimpleDataGenerator, BaseDataGenerator
 
 
-def train_cnn(path="model/", to_simple_digit=False):
+def train_cnn(path="model/", to_simple_digit=False, epochs=100, ft_epochs=100, learning_rate=0.01):
     """
-    Train the CNN model and save it under the given path.
-    
-    The method first loads the models using *generate_datasets.py* methods. Then the model is trained and saved and
-    finally evaluated.
+    Train the CNN model and save it under the given path. The method first loads the models using
+    :py:doc:`generate_datasets.py <training.generate_datasets.py>` methods. Then the model is trained, saved and finally
+    evaluated.
+
+    Training is run in two steps: It is first trained with synthetic data and then finetuned with real data. Early
+    stopping is used to prevent overfitting.
 
     Args:
-        path: The directory to save the trained model to. (Default value = "model/")
-        to_simple_digit: If true, convert the datasets to simple 9 + 1 class digit recognition. (Default value = False)
+        path(str): The directory to save the trained model to. (Default value = "model/")
+        to_simple_digit(bool): If true, convert the datasets to simple 9 + 1 class digit recognition.
+            (Default value = False)
+        epochs(int): The number of epochs. (Default value = 100)
+        ft_epochs: The number of finetuning epochs. (Default value = 100)
+        learning_rate: The learning rate for the Adadelta optimizer. (Default value = 0.01)
 
     Returns:
         None
@@ -77,11 +83,11 @@ def train_cnn(path="model/", to_simple_digit=False):
         print("Creating model..")
         model = Sequential()
         model.add(layers.InputLayer(input_shape=(28, 28, 1)))
-        model.add(layers.Conv2D(16, (3, 3)))  # 26x26x16
+        model.add(layers.Conv2D(16, (3, 3), padding='same'))  # 28x28x16
         model.add(layers.BatchNormalization())
         model.add(layers.Activation('relu'))
-        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 13x13x16
-        model.add(layers.Conv2D(32, (2, 2)))  # 12x12x32
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 14x14x16
+        model.add(layers.Conv2D(32, (3, 3)))  # 12x12x32
         model.add(layers.BatchNormalization())
         model.add(layers.Activation('relu'))
         model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 6x6x32
@@ -89,25 +95,27 @@ def train_cnn(path="model/", to_simple_digit=False):
         model.add(layers.BatchNormalization())
         model.add(layers.Activation('relu'))
         model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 2x2x64
-        model.add(layers.Flatten())  # 256
+        model.add(layers.Conv2D(128, (3, 3), padding='same'))  # 2x2x64
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2, 2)))  # 1x1x128
+        model.add(layers.Flatten())  # 64
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dropout(0.25))
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(train_generator.num_classes))
 
         # Hyperparameters
-        epochs = 100
-        ft_epochs = 100
 
         print("Compiling model..")
         model.compile(
             loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-            optimizer=keras.optimizers.Adadelta(0.01),
+            optimizer=keras.optimizers.Adadelta(learning_rate),
             metrics=['accuracy']
         )
         print(model.summary())
 
-        print("Training model")
+        print("Training model on")
         model.fit(
             train_generator, validation_data=dev_generator,
             epochs=epochs,
@@ -118,7 +126,7 @@ def train_cnn(path="model/", to_simple_digit=False):
 
         print("Finetuning model")
         model.fit(
-            ft_train_generator, validation_data=ft_train_generator,
+            ft_train_generator, validation_data=ft_dev_generator,
             epochs=ft_epochs,
             callbacks=[
                 EarlyStopping(monitor='val_accuracy', restore_best_weights=True, patience=3, min_delta=0.0001),
@@ -126,7 +134,7 @@ def train_cnn(path="model/", to_simple_digit=False):
         )
 
         print("Saving keras model")
-        models.save_model(model, path + "model.hdf5", include_optimizer=False)
+        models.save_model(model, path + "model.h5")
 
         print("Evaluating keras model")
         print("Training dev", dict(zip(model.metrics_names, model.evaluate(dev_generator))))
@@ -135,7 +143,7 @@ def train_cnn(path="model/", to_simple_digit=False):
         evaluate(model, test_generator)
 
 
-def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator):
+def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator, binary=False):
     """
     Converts a Keras model to a tf.lite byte model.
 
@@ -153,17 +161,19 @@ def convert_to_tflite(model: Model, path: str, test_generator: BaseDataGenerator
     tflite_float_model = converter.convert()
     with open(path + "model.tflite", "wb") as f:
         f.write(tflite_float_model)
-    print(f"TFLite model accurracy: {evaluate_tflite_model(tflite_float_model, test_generator):0.02f}")
+    tflite_float_score = evaluate_tflite_model(tflite_float_model, test_generator, binary=binary)
+    print(f"TFLite model accurracy: {tflite_float_score :0.02f}")
     print("Converting to quantized TFLite model")
     converter: tf.lite.TFLiteConverter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     tflite_quantized_model = converter.convert()
     with open(path + "model.quantized.tflite", "wb") as f:
         f.write(tflite_quantized_model)
-    print(f"TFLite quantized model accurracy: {evaluate_tflite_model(tflite_quantized_model, test_generator):0.02f}")
+    tflite_quantized_score = evaluate_tflite_model(tflite_quantized_model, test_generator, binary=binary)
+    print(f"TFLite quantized model accurracy: {tflite_quantized_score :0.02f}")
 
 
-def evaluate_tflite_model(tflite_model_content: bytes, test_generator: BaseDataGenerator) -> float:
+def evaluate_tflite_model(tflite_model_content: bytes, test_generator: BaseDataGenerator, binary=False) -> float:
     """
     Evaluate a tf.lite model with the given *test_generator*.
 
@@ -197,7 +207,10 @@ def evaluate_tflite_model(tflite_model_content: bytes, test_generator: BaseDataG
 
         # Post-processing: remove batch dimension and find the digit with highest
         # probability.
-        digit = np.argmax(output()[0])
+        if binary:
+            digit = int(output()[0] >= 0.5)
+        else:
+            digit = np.argmax(output()[0])
         prediction_digits.append(digit)
 
     # Compare prediction results with ground truth labels to calculate accuracy.
@@ -235,7 +248,7 @@ def evaluate(
     else:
         y_pred = np.array(model.predict_classes(x))
 
-    print(list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
+    # print(list(zip(model.metrics_names, model.evaluate_generator(test_generator))))
     print(classification_report(y_true, y_pred))
     print(f"{p}/{t}" + ("!" if p != t else "") for p, t in zip(y_pred, y_true))
     return x, y_true, y_pred
@@ -285,36 +298,6 @@ def load_and_evaluate(filepath="model_simple_finetuning/cnn_model.ft.final.hdf5"
     evaluate(model, test_generator)
 
 
-if __name__ == '__main__':
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-    tf.get_logger().setLevel('ERROR')
-
-    train_cnn("model_simple_finetuning/", True)
-    train_cnn("model_full_finetuning/", False)
-
-    validation = load_datasets([TRANSFORMED_DATASET_NAMES[-1]])[0]
-    test_generator = SimpleDataGenerator(
-        validation.test,
-        batch_size=64,
-        shuffle=False,
-        to_simple_digit=True
-    )
-    model = models.load_model("model_simple_finetuning/model.hdf5")
-    evaluate(model, test_generator)
-    convert_to_tflite(model, "model_simple_finetuning/", test_generator)
-
-    test_generator = SimpleDataGenerator(
-        validation.test,
-        batch_size=64,
-        shuffle=False,
-        to_simple_digit=False
-    )
-    model = models.load_model("model_full_finetuning/model.hdf5")
-    evaluate(model, test_generator)
-    convert_to_tflite(model, "model_full_finetuning/", test_generator)
-
-
 def get_labels(y_true: np.ndarray, y_pred: np.ndarray):
     """
     Helper function that returns a list of 'pred_label/true_label' pairings as string. When the prediction was correct,
@@ -362,3 +345,34 @@ def plot_9x9_grid(zipped: zip, title: str):
             axes[i][j].set_title(str(label))
     plt.savefig(f"{title.replace(' ', '_')}.png")
     plt.show()
+
+
+if __name__ == '__main__':
+    tf.get_logger().setLevel('ERROR')
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+    # Train 10 class model
+    train_cnn("model_simple_finetuning/", True)
+    validation = load_datasets([TRANSFORMED_DATASET_NAMES[-1]])[0]
+    test_generator = SimpleDataGenerator(
+        validation.test,
+        batch_size=64,
+        shuffle=False,
+        to_simple_digit=True
+    )
+    model = models.load_model("model_simple_finetuning/model.h5")
+    # evaluate(model, test_generator)
+    convert_to_tflite(model, "model_simple_finetuning/", test_generator)
+
+    # Train 20 class model
+    train_cnn("model_full_finetuning/", False)
+    test_generator = SimpleDataGenerator(
+        validation.test,
+        batch_size=64,
+        shuffle=False,
+        to_simple_digit=False
+    )
+    model = models.load_model("model_full_finetuning/model.h5")
+    # evaluate(model, test_generator)
+    convert_to_tflite(model, "model_full_finetuning/", test_generator)

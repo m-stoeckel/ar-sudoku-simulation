@@ -17,6 +17,10 @@ that the recognition of the Sudoku grid it self would not make use of machine le
 foundational computer vision methods. Thus, more time was used to develop more sophisticated methods for the creation 
 of a dataset for digit recognition.""")
 class SudokuLayer(DigitalCompositionLayer):
+    """
+    A :py:class:`DigitalCompositionLayer` subclass for Sudoku rendering.
+
+    """
     def __init__(self, shape: tuple, **kwargs):
         super().__init__(shape, **kwargs)
 
