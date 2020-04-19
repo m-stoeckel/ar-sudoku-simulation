@@ -22,7 +22,7 @@ methods described there make use of four different base datasets:
 - the MNIST_ dataset of 70,000 hand-written digits,
 - the `Handwritten Characters Database`_ of 62,382 hand-written digits,
 - a dataset of unknown license we simply call the 'Digit Dataset' of 8,235 machine-written digits,
-- a dynamic dataset of machine-written characters in 325 fonts generated through this project,
+- a dynamic dataset of machine-written characters in 325 open-domain fonts generated through this project.
 
 Additionally we created and annotated a test dataset of 5,427 cells generated from real Sudokus after passing through
 our CV pipeline.
@@ -116,25 +116,20 @@ Overview
 ^^^^^^^^
 
 We chose a *Convolutional Neural Net* architecture for our digit classifier.
-In our experiments we created three different models: two bigger CNNs for multiple classes and a small CNN for binary
-classification.
+In our experiments we created three different models: two bigger CNNs for multiple classes and a small CNN for binary classification.
 All models use 2D convolutional, max pooling layers and a final three-layer MLP for classification.
-We apply batch normalization to the convolutional layers and dropout to the dense layers, as well as early stopping
-conditioned on the validation accuracy to prevent overfitting.
+We apply batch normalization to the convolutional layers and dropout to the dense layers, while using early stopping conditioned on the validation accuracy during training to prevent overfitting.
 
-We use ``Adadelta`` with a learning rate of 0.01 for all models and train the models using (Binary) Cross Entropy Loss
-on logits (thus no activation function on the output layer, see `Model Details`_ below).
-The training is done in two steps, first with our synthetic data and then with the real dataset only for finetuning
-purposes.
-The real data is expanded by some light transforms to compensate for its small size.
+We use the ``Adadelta`` optimizer with a learning rate of 0.01 for all models and train the models using (Binary) Cross Entropy Loss on logits (thus no activation function on the output layer, see `Model Details`_ below).
+The training is done in two steps, first with our synthetic data and then with the real dataset only to finetune the parameters.
+The real data is extended with some light transforms to compensate for its small size.
 
 Each of the three models is described in detail in the following.
 
 Model Details
 ^^^^^^^^^^^^^
 
-The 'simple' and 'full' model are used for digit recognition and identical except for the size of their output layer,
-whereas the binary model is used to classify empty fields.
+The 'simple' and 'full' model are used for digit recognition and are identical except for the size of their output layer, whereas the binary model is used to classify empty fields.
 The 'simple' model is used to classify 10 classes: the empty cell and all digits from ``1`` to ``9``.
 The 'full' model differentiates between handwritten and machine-written digits and has an output node for an additional 'out' class.
 After some experiments we decided to drop class ``10`` (the 'out' class, containing non-numeric symbols) from the
