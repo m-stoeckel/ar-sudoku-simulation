@@ -306,7 +306,7 @@ def render_overview(data: np.ndarray, indices_by_number: dict, samples: int, fil
 
 
 if __name__ == '__main__':
-    # CharacterRenderer().prerender_all(mode='L')
-    # generate_base_datasets()
-    # generate_transformed_datasets()
+    CharacterRenderer().prerender_all(mode='L')
+    generate_base_datasets()
+    generate_transformed_datasets()
     create_data_overview()
