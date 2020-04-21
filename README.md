@@ -9,7 +9,7 @@ Main project: [ar-sudoku](https://github.com/ngormsen/ar-sudoku)
 
 ## Instructions
 
-- Accuire data
+- Acquire data
   - Either:
     - Extract the archives in the `datasets/` directory.
     - Run `generate_datasets.py` which creates base and training datasets and saves them as HDF5 files.
