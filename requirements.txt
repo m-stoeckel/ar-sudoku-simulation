@@ -9,6 +9,6 @@ scikit-learn~=0.22.2.post1
 sklearn~=0.0
 sphinx_glpi_theme>=0.3
 tensorflow-gpu~=2.1.0
-tensorflow==2.1.0
+tensorflow==2.7.2
 tqdm~=4.45.0
 sphinx~=3.0.1
